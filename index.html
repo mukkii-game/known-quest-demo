@@ -84,13 +84,14 @@
         <div class="card-corner card-corner-a" aria-hidden="true"></div>
         <div class="card-corner card-corner-b" aria-hidden="true"></div>
         <div class="card-meta">
-          <span id="card-depth">UI</span>
-          <span id="card-raw-id">DR0001</span>
+          <span id="card-depth">入口</span>
+          <span id="card-entry-id">JE001</span>
         </div>
         <div id="card-front" class="card-face">
-          <p id="card-context" class="card-context">TITLE SCREEN</p>
-          <div id="card-word" class="card-word">CONTINUE</div>
-          <p class="card-prompt">ゲーム中の意味を、どのくらい知っていますか？</p>
+          <p id="card-context" class="card-context">システムメニュー</p>
+          <div id="card-katakana" class="card-katakana">セーブ</div>
+          <div id="card-english" class="card-english">save</div>
+          <p class="card-prompt">日本のゲームで、この言葉をどのくらい知っていますか？</p>
           <div class="answer-grid" role="group" aria-label="既知度を選択">
             <button type="button" class="answer-button" data-answer="0"><kbd>1</kbd> 初めて見た</button>
             <button type="button" class="answer-button" data-answer="1"><kbd>2</kbd> 見たことある</button>
@@ -129,7 +130,7 @@
       </div>
       <div class="next-mission">
         <span class="next-mission-index">NEXT</span>
-        <div><strong>3つの言葉を、ゲームの外まで伸ばす</strong><small>SAVE / CHECKPOINT / OBJECTIVE</small></div>
+        <div><strong>3つのカタカナ語から、英語を広げる</strong><small>セーブ / レベル / クエスト</small></div>
       </div>
       <button class="primary-button" type="button" data-action="start-networks" data-testid="start-networks">
         <span>知識マップをひらく</span><span aria-hidden="true">→</span>
@@ -140,14 +141,14 @@
       <div class="scan-head">
         <div>
           <div class="eyebrow">KNOWLEDGE MAP <span id="network-step">1 / 3</span></div>
-          <h2 id="network-title">SAVEを伸ばす</h2>
+          <h2 id="network-title">セーブから広げる</h2>
         </div>
-        <span id="network-depth" class="depth-chip">UI → DAILY</span>
+        <span id="network-depth" class="depth-chip">入口 → 操作</span>
       </div>
 
       <div class="network-stage">
         <div class="network-lines" aria-hidden="true"></div>
-        <div id="network-core" class="network-core">SAVE</div>
+        <div id="network-core" class="network-core"><span id="network-core-katakana">セーブ</span><small id="network-core-english">save</small></div>
         <div id="network-nodes" class="network-nodes" aria-label="関連語"></div>
       </div>
 
@@ -168,11 +169,11 @@
       <p class="lead">ボタンの一語から、仕事・日常・物語を読む英語へ。知っていた場所から始めればいい。</p>
 
       <div class="depth-ladder" aria-label="ゲーム英語の深さ">
-        <div><span>01</span><strong>UI</strong><small>save / continue</small></div>
-        <div><span>02</span><strong>ACTION</strong><small>resume / retry</small></div>
-        <div><span>03</span><strong>SYSTEM</strong><small>checkpoint / life</small></div>
-        <div><span>04</span><strong>STORY</strong><small>objective / quest</small></div>
-        <div><span>05</span><strong>TRANSFER</strong><small>日常で使える英語へ</small></div>
+        <div><span>01</span><strong>入口</strong><small>セーブ / save</small></div>
+        <div><span>02</span><strong>操作</strong><small>スタート / press start</small></div>
+        <div><span>03</span><strong>成長</strong><small>レベル / level</small></div>
+        <div><span>04</span><strong>物語</strong><small>クエスト / quest</small></div>
+        <div><span>05</span><strong>発見</strong><small>ラスボス / final boss</small></div>
       </div>
 
       <div class="final-summary">

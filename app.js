@@ -1,55 +1,58 @@
 "use strict";
 
 const scanCards = [
-  { rawId: "DR0040", word: "save", context: "SYSTEM MENU", depth: "UI", hook: "進行を残す", bridge: "データだけでなく、時間・お金・命を『失わないよう残す』時にも使えます。" },
-  { rawId: "DR0001", word: "continue", context: "TITLE SCREEN", depth: "UI", hook: "途中から続ける", bridge: "ゲームの外では、話や作業を『続ける』にそのまま使えます。" },
-  { rawId: "DR0002", word: "resume", context: "PAUSE MENU", depth: "UI", hook: "止めたところから再開する", bridge: "仕事、会議、会話などを中断後に再開する時にも使えます。" },
-  { rawId: "DR0005", word: "retry", context: "FAILURE SCREEN", depth: "ACTION", hook: "同じ場面にもう一度挑む", bridge: "re- + try と見ると、通信や仕事の『再試行』にもつながります。" },
-  { rawId: "DR0004", word: "quit", context: "SYSTEM MENU", depth: "ACTION", hook: "ゲームを終了する", bridge: "単に終わるだけでなく、本人の意思で仕事や習慣をやめる時にも使います。" },
-  { rawId: "DR0008", word: "checkpoint", context: "STAGE", depth: "SYSTEM", hook: "戻ってこられる通過地点", bridge: "現実では、人や車を止めて確認する『検問所』にも使われます。" },
-  { rawId: "DR0007", word: "restart", context: "FAILURE SCREEN", depth: "ACTION", hook: "最初からやり直す", bridge: "ゲームだけでなく、機械や計画をいったん止めて始め直す時にも使えます。" },
-  { rawId: "DR0011", word: "life", context: "STATUS", depth: "SYSTEM", hook: "残り回数や命", bridge: "ゲームの残機から、生命・生活・人生という大きな意味へ戻れます。" },
-  { rawId: "DR0012", word: "experience level", context: "STATUS", depth: "SYSTEM", hook: "経験値に応じた強さの段階", bridge: "experience は体験や経験、level は到達段階としてゲーム外でも頻出します。" },
-  { rawId: "DR0010", word: "high score", context: "RESULT", depth: "SYSTEM", hook: "過去最高の得点", bridge: "score は試験・競技・評価の点数にも広がり、high が数値の大きさを示します。" },
-  { rawId: "DR0015", word: "objective", context: "MAP", depth: "STORY", hook: "今回達成する目標", bridge: "仕事や計画でも、達成点をはっきり示す名詞として使えます。" },
-  { rawId: "DR0014", word: "main mission", context: "QUEST LOG", depth: "STORY", hook: "物語の中心となる任務", bridge: "main は中心、mission は果たすべき任務や使命を表します。" },
-  { rawId: "DR0016", word: "quest", context: "QUEST LOG", depth: "STORY", hook: "探し求めて進む課題", bridge: "ゲームの依頼だけでなく、答えや真実を探す長い追求にも使えます。" },
-  { rawId: "DR0023", word: "achievement", context: "REWARD", depth: "STORY", hook: "条件達成で残る実績", bridge: "ゲーム外では、努力して成し遂げた成果や業績を表します。" },
-  { rawId: "DR0024", word: "reward", context: "QUEST COMPLETE", depth: "STORY", hook: "達成後にもらう報酬", bridge: "努力や行動への見返りとして得るものを、日常や仕事でも表します。" }
+  { entryId: "JE001", katakana: "セーブ", english: "save", context: "システムメニュー", depth: "入口", hook: "進行を残す", bridge: "save はデータだけでなく、人を救う・時間やお金を節約する時にも使えます。" },
+  { entryId: "JE002", katakana: "ロード", english: "load", context: "セーブデータの読込", depth: "入口", hook: "保存したデータを読み込む", bridge: "ここでは load。カタカナだけなら road や lord の可能性もあります。load は荷物を積む・負荷をかける意味にも広がります。" },
+  { entryId: "JE003", katakana: "スタート", english: "start", context: "タイトル画面", depth: "入口", hook: "ゲームを始める", bridge: "日本のゲームで見かける push start。自然な英語でボタン操作を案内するなら press start が基本です。" },
+  { entryId: "JE004", katakana: "コンティニュー", english: "continue", context: "ゲームオーバー後", depth: "入口", hook: "途中から続ける", bridge: "continue はゲームの外でも、話や作業を『続ける』時にそのまま使えます。" },
+  { entryId: "JE005", katakana: "ゲームオーバー", english: "game over", context: "失敗画面", depth: "入口", hook: "プレイの区切りになる", bridge: "game over の over は『終わって』の感覚。over には『越えて』など別の使い方もあります。" },
+  { entryId: "JE006", katakana: "レベル", english: "level", context: "ステータス", depth: "成長", hook: "強さや進行の段階", bridge: "level はゲームの強さだけでなく、水準・段階・平らという意味にも広がります。" },
+  { entryId: "JE007", katakana: "ステージ", english: "stage", context: "進行マップ", depth: "成長", hook: "区切られた面や場面", bridge: "stage はゲームの面だけでなく、舞台や物事の段階にも使えます。" },
+  { entryId: "JE008", katakana: "アイテム", english: "item", context: "持ちもの", depth: "成長", hook: "取得・使用する道具", bridge: "item は道具だけでなく、リストの品目や話題の項目にも使えます。" },
+  { entryId: "JE009", katakana: "スキル", english: "skill", context: "能力画面", depth: "成長", hook: "習得・装備する能力や技", bridge: "skill はゲーム外では、練習や経験で身につけた技能を表します。" },
+  { entryId: "JE010", katakana: "コマンド", english: "command", context: "バトルメニュー", depth: "成長", hook: "次の行動を選ぶ", bridge: "command はゲームの選択肢だけでなく、命令や指揮という意味にもつながります。" },
+  { entryId: "JE011", katakana: "クエスト", english: "quest", context: "依頼リスト", depth: "物語", hook: "依頼を受けて達成する課題", bridge: "quest は、答えや何かを探し求める長い追求という意味にも使えます。" },
+  { entryId: "JE012", katakana: "ミッション", english: "mission", context: "任務画面", depth: "物語", hook: "達成すべき任務", bridge: "mission はゲームの任務から、組織や人が果たす使命へ広がります。" },
+  { entryId: "JE013", katakana: "バトル", english: "battle", context: "戦闘画面", depth: "物語", hook: "敵との戦闘", bridge: "battle は戦闘だけでなく、困難や病気との『闘い』にも使えます。" },
+  { entryId: "JE014", katakana: "ボーナス", english: "bonus", context: "結果画面", depth: "物語", hook: "追加の得点・報酬・特典", bridge: "bonus は、通常の分に追加でもらえるものを表します。" },
+  { entryId: "JE015", katakana: "ラスボス", english: "final boss", context: "物語の終盤", depth: "発見", hook: "最後に立ちはだかる主要ボス", bridge: "日本語では『ラスボス』。自然な英語では last boss より final boss が普通です。" }
 ];
 
 const networks = [
   {
-    core: "SAVE",
-    title: "SAVEを伸ばす",
-    depth: "UI → ACTION",
+    coreKatakana: "セーブ",
+    coreEnglish: "save",
+    title: "セーブから広げる",
+    depth: "入口 → 操作",
     nodes: [
-      { word: "continue", label: "SESSION FLOW", title: "continue a game", copy: "保存した進行を、途中から続ける。日常では話や作業を続ける動詞です。" },
-      { word: "resume", label: "SESSION FLOW", title: "resume from pause", copy: "一時停止した状態から再開する。仕事や会議の再開にも使えます。" },
-      { word: "retry", label: "SESSION FLOW", title: "retry after failure", copy: "失敗した同じ試みをもう一度行う。通信や処理の再試行にも広がります。" },
-      { word: "quit", label: "SESSION FLOW", title: "save and quit", copy: "進行を残して終了する。ゲーム外では仕事や習慣を自分の意思でやめる語です。" }
+      { katakana: "ロード", english: "load", label: "セーブデータ", title: "ロード / load", copy: "保存した進行を読み込む。load は荷物を積む・負荷をかける意味にも広がります。" },
+      { katakana: "スタート", english: "start", label: "タイトル画面", title: "スタート / start", copy: "push start で知っていた start から、自然な操作指示 press start へ進めます。" },
+      { katakana: "コンティニュー", english: "continue", label: "プレイ継続", title: "コンティニュー / continue", copy: "保存した進行を途中から続ける。会話や作業を続ける時にも使えます。" },
+      { katakana: "ゲームオーバー", english: "game over", label: "プレイ終了", title: "ゲームオーバー / game over", copy: "プレイの区切りを示す句から、over の『終わって』という感覚を発見します。" }
     ]
   },
   {
-    core: "CHECKPOINT",
-    title: "CHECKPOINTを伸ばす",
-    depth: "ACTION → SYSTEM",
+    coreKatakana: "レベル",
+    coreEnglish: "level",
+    title: "レベルから広げる",
+    depth: "成長 → システム",
     nodes: [
-      { word: "restart", label: "STATE CHANGE", title: "restart at a checkpoint", copy: "失敗後に、記録された地点から始め直す。機械や計画の再始動にも使えます。" },
-      { word: "life", label: "PLAYER STATE", title: "remaining life", copy: "再挑戦できる残り回数や命。一般英語では生命・生活・人生へ広がります。" },
-      { word: "experience level", label: "GROWTH STATE", title: "experience level", copy: "経験に応じた成長段階。experience と level を別々にも使えるようになります。" },
-      { word: "high score", label: "RESULT STATE", title: "high score", copy: "過去最高の得点。score は試験や評価の点数にも使われます。" }
+      { katakana: "ステージ", english: "stage", label: "進行", title: "ステージ / stage", copy: "区切られた面から、舞台や物事の段階という意味へ広がります。" },
+      { katakana: "アイテム", english: "item", label: "持ちもの", title: "アイテム / item", copy: "道具から、リストの品目や話題の項目へ広がります。" },
+      { katakana: "スキル", english: "skill", label: "能力", title: "スキル / skill", copy: "習得した技から、練習や経験で身につけた技能へ広がります。" },
+      { katakana: "コマンド", english: "command", label: "行動選択", title: "コマンド / command", copy: "行動メニューから、命令や指揮という意味へ広がります。" }
     ]
   },
   {
-    core: "OBJECTIVE",
-    title: "OBJECTIVEを伸ばす",
-    depth: "SYSTEM → STORY",
+    coreKatakana: "クエスト",
+    coreEnglish: "quest",
+    title: "クエストから広げる",
+    depth: "物語 → 発見",
     nodes: [
-      { word: "main mission", label: "PRIORITY", title: "main mission", copy: "物語の中心として果たす任務。mission は組織や人の使命にも広がります。" },
-      { word: "quest", label: "STORY", title: "quest objective", copy: "探し進む課題の中に、具体的な達成目標が置かれます。" },
-      { word: "achievement", label: "RESULT", title: "unlock an achievement", copy: "条件を成し遂げた結果として残る実績。仕事や学習の成果にも使えます。" },
-      { word: "reward", label: "PAYOFF", title: "mission reward", copy: "達成後に得る報酬。行動と見返りを一組の流れとして読めます。" }
+      { katakana: "ミッション", english: "mission", label: "任務", title: "ミッション / mission", copy: "ゲームの任務から、組織や人が果たす使命へ広がります。" },
+      { katakana: "バトル", english: "battle", label: "戦闘", title: "バトル / battle", copy: "敵との戦闘から、困難との闘いという比喩へ広がります。" },
+      { katakana: "ボーナス", english: "bonus", label: "追加報酬", title: "ボーナス / bonus", copy: "通常の報酬に追加されるものとして、ゲーム外でもそのまま使えます。" },
+      { katakana: "ラスボス", english: "final boss", label: "日英のずれ", title: "ラスボス / final boss", copy: "日本語では『ラスト＋ボス』ですが、自然な英語では final boss と表すのが普通です。" }
     ]
   }
 ];
@@ -93,9 +96,10 @@ function renderCard() {
   $("scan-current").textContent = String(state.cardIndex + 1);
   $("scan-progress").style.width = `${((state.cardIndex + 1) / scanCards.length) * 100}%`;
   $("card-depth").textContent = card.depth;
-  $("card-raw-id").textContent = card.rawId;
+  $("card-entry-id").textContent = card.entryId;
   $("card-context").textContent = card.context;
-  $("card-word").textContent = card.word;
+  $("card-katakana").textContent = card.katakana;
+  $("card-english").textContent = card.english;
   $("card-hook").textContent = card.hook;
   $("card-bridge").textContent = card.bridge;
   $("card-front").hidden = false;
@@ -160,7 +164,8 @@ function renderNetwork() {
   $("network-step").textContent = `${state.networkIndex + 1} / ${networks.length}`;
   $("network-title").textContent = network.title;
   $("network-depth").textContent = network.depth;
-  $("network-core").textContent = network.core;
+  $("network-core-katakana").textContent = network.coreKatakana;
+  $("network-core-english").textContent = network.coreEnglish;
   $("connection-label").textContent = "SELECT A NODE";
   $("connection-title").textContent = "枝を1つ選んでください";
   $("connection-copy").textContent = "ゲームの意味を出発点に、日常で使える意味までつなぎます。";
@@ -172,7 +177,11 @@ function renderNetwork() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "network-node";
-    button.textContent = node.word;
+    const katakana = document.createElement("span");
+    katakana.textContent = node.katakana;
+    const english = document.createElement("small");
+    english.textContent = node.english;
+    button.append(katakana, english);
     button.dataset.nodeIndex = String(index);
     button.dataset.testid = `network-node-${index}`;
     button.setAttribute("aria-pressed", "false");
