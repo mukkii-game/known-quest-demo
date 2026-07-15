@@ -26,7 +26,7 @@
     <section id="screen-home" class="screen is-active" aria-labelledby="home-title">
       <div class="eyebrow"><span class="pulse-dot"></span> ENGLISH ASSET SCAN</div>
       <h1 id="home-title">そのゲーム英語、<br><span>もう知ってる。</span></h1>
-      <p class="lead">勉強を始める前に、ゲームで育っていた英語を15語だけスキャンします。</p>
+      <p class="lead">勉強を始める前に、ゲームで育っていた基本15語＋HARD 5語をスキャンします。</p>
 
       <div class="path-picker" aria-label="興味分野">
         <button class="path-card path-card-active" type="button" aria-pressed="true">
@@ -60,7 +60,7 @@
       </div>
 
       <div class="mission-brief">
-        <div><span>WORDS</span><strong>15</strong></div>
+        <div><span>WORDS</span><strong>20</strong></div>
         <div><span>MAPS</span><strong>3</strong></div>
         <div><span>TIME</span><strong>5–8 min</strong></div>
       </div>
@@ -73,10 +73,10 @@
     <section id="screen-scan" class="screen" aria-labelledby="scan-title" hidden>
       <div class="scan-head">
         <div>
-          <div class="eyebrow">QUICK SCAN</div>
+          <div id="scan-eyebrow" class="eyebrow">QUICK SCAN</div>
           <h2 id="scan-title">見たことある？</h2>
         </div>
-        <div class="progress-copy"><span id="scan-current">1</span> / 15</div>
+        <div class="progress-copy"><span id="scan-current">1</span> / 20</div>
       </div>
       <div class="progress-track" aria-hidden="true"><span id="scan-progress"></span></div>
 
@@ -89,9 +89,10 @@
         </div>
         <div id="card-front" class="card-face">
           <p id="card-context" class="card-context">システムメニュー</p>
+          <span id="card-hard-badge" class="hard-badge" hidden>HARD</span>
           <div id="card-katakana" class="card-katakana">セーブ</div>
           <div id="card-english" class="card-english">save</div>
-          <p class="card-prompt">日本のゲームで、この言葉をどのくらい知っていますか？</p>
+          <p id="card-prompt" class="card-prompt">日本のゲームで、この言葉をどのくらい知っていますか？</p>
           <div class="answer-grid" role="group" aria-label="既知度を選択">
             <button type="button" class="answer-button" data-answer="0"><kbd>1</kbd> 初めて見た</button>
             <button type="button" class="answer-button" data-answer="1"><kbd>2</kbd> 見たことある</button>
@@ -99,7 +100,7 @@
           </div>
         </div>
         <div id="card-back" class="card-face card-back" hidden>
-          <p class="reveal-label">FOUND IN YOUR INVENTORY</p>
+          <p id="reveal-label" class="reveal-label">FOUND IN YOUR INVENTORY</p>
           <div id="card-hook" class="card-hook">途中から続ける</div>
           <p id="card-bridge" class="card-bridge">ゲームの外では、話や作業を「続ける」にそのまま使えます。</p>
           <button class="primary-button primary-button-compact" type="button" data-action="next-card" data-testid="next-card">
@@ -128,6 +129,10 @@
         <div><span>意味もわかる</span><strong id="result-understood">0</strong></div>
         <div><span>未発見</span><strong id="result-new">0</strong></div>
       </div>
+      <div class="hard-result">
+        <span class="hard-badge">HARD</span>
+        <div><strong id="result-hard">0 / 5 発見</strong><small id="result-hard-detail">基本ランクの採点外</small></div>
+      </div>
       <div class="next-mission">
         <span class="next-mission-index">NEXT</span>
         <div><strong>3つのカタカナ語から、英語を広げる</strong><small>セーブ / レベル / クエスト</small></div>
@@ -148,6 +153,7 @@
 
       <div class="network-stage">
         <div class="network-lines" aria-hidden="true"></div>
+        <div id="network-link-layer" class="network-link-layer" aria-hidden="true"></div>
         <div id="network-core" class="network-core"><span id="network-core-katakana">セーブ</span><small id="network-core-english">save</small></div>
         <div id="network-nodes" class="network-nodes" aria-label="関連語"></div>
       </div>
@@ -178,8 +184,8 @@
 
       <div class="final-summary">
         <span>YOUR SCAN</span>
-        <strong id="final-summary-text">15語中0語を発見</strong>
-        <small>結果はこの端末内だけで処理し、送信していません。</small>
+        <strong id="final-summary-text">基本15語＋HARD 5語をスキャン</strong>
+        <small id="final-summary-detail">結果はこの端末内だけで処理し、送信していません。</small>
       </div>
 
       <div class="final-actions">
