@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#090d1d">
+  <meta name="theme-color" content="#16172d">
   <meta name="description" content="ゲームで知っていた英語を発掘する、ローカル完結のM0体験プロトタイプ。">
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" href="data:,">
@@ -152,14 +152,40 @@
       <div class="network-stage">
         <div class="network-lines" aria-hidden="true"></div>
         <div id="network-link-layer" class="network-link-layer" aria-hidden="true"></div>
-        <div id="network-core" class="network-core"><span id="network-core-katakana">セーブ</span><small id="network-core-english">save</small></div>
+        <div id="network-core" class="network-core">
+          <span class="network-core-label">主役語</span>
+          <strong id="network-core-katakana">セーブ</strong>
+          <small id="network-core-english">save</small>
+          <p id="network-core-copy">進行を残す操作</p>
+        </div>
         <div id="network-nodes" class="network-nodes" aria-label="左右どちらへ知識をつなぐか選択"></div>
       </div>
 
+      <p class="network-draft-note">関係説明はAI草案・Human未検証です</p>
+
       <div class="connection-panel" aria-live="polite">
-        <span id="connection-label">CHOOSE LEFT OR RIGHT</span>
-        <strong id="connection-title">つなぎたい方向を1つ選んでください</strong>
-        <p id="connection-copy">正解・不正解はありません。気になる関連語を選びます。</p>
+        <div class="guide-avatar">
+          <img src="guide-avatar.png" alt="ことばのつながりを案内する仮のガイドキャラクター">
+          <small>AI生成の仮ビジュアル</small>
+        </div>
+        <div class="connection-message">
+          <span id="connection-label">ガイドのメモ</span>
+          <strong id="connection-title">2つの説明をくらべて選ぼう</strong>
+          <p id="connection-copy">正解・不正解はありません。気になるつながりを選びます。</p>
+        </div>
+        <div id="connection-comparison" class="connection-comparison" hidden>
+          <div class="comparison-word">
+            <span>主役語</span>
+            <strong id="comparison-main-word">セーブ</strong>
+            <p id="comparison-main-copy">進行を残す操作</p>
+          </div>
+          <div class="comparison-word comparison-word-related">
+            <span>関連語</span>
+            <strong id="comparison-related-word">ロード</strong>
+            <p id="comparison-related-copy">保存した進行を読み出す操作</p>
+          </div>
+          <p id="comparison-relation" class="comparison-relation">保存と読み出しの関係です。</p>
+        </div>
       </div>
 
       <button id="network-next" class="primary-button" type="button" data-action="next-network" data-testid="next-network" disabled>

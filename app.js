@@ -7,6 +7,18 @@ const BAND_META = Object.freeze({
   intermediate: { label: "中級", className: "band-intermediate", quota: 3 },
   advanced: { label: "上級", className: "band-advanced", quota: 3 }
 });
+const RELATION_COPY_OVERRIDES = Object.freeze({
+  "guide::tutorial": Object.freeze({
+    mainMeaning: "最初に基本内容を、\nていねいに導くこと",
+    relatedMeaning: "進め方を、ていねいに導くこと",
+    connection: "共通点は「ていねいに導く」。tutorial は最初の基本にしぼります。"
+  }),
+  "training::tutorial": Object.freeze({
+    mainMeaning: "最初に基本内容を、\nていねいに導くこと",
+    relatedMeaning: "実際に試しながら、操作を身につけること",
+    connection: "tutorial は最初に説明し、training は実際に試して身につけます。"
+  })
+});
 
 if (!Array.isArray(scanCards) || scanCards.length !== TOTAL_CARDS) {
   throw new Error("The Tinder prototype requires exactly 100 cards.");
@@ -182,6 +194,17 @@ function startNetworks() {
   renderNetwork();
 }
 
+function relationComparison(card, side) {
+  const related = card[side];
+  const key = networkLinkKey(card.english, related.english);
+  const override = RELATION_COPY_OVERRIDES[key];
+  return override || {
+    mainMeaning: card.context,
+    relatedMeaning: related.relation,
+    connection: `${card.katakana}から見た関係：${related.relation}`
+  };
+}
+
 function renderNetwork() {
   const card = state.networkQueue[state.networkIndex];
   const meta = bandMeta(card);
@@ -193,9 +216,11 @@ function renderNetwork() {
   $("network-depth").className = `depth-chip ${meta.className}`;
   $("network-core-katakana").textContent = card.katakana;
   $("network-core-english").textContent = card.english.toLowerCase();
-  $("connection-label").textContent = "CHOOSE LEFT OR RIGHT";
-  $("connection-title").textContent = "つなぎたい方向を1つ選んでください";
-  $("connection-copy").textContent = "正解・不正解はありません。気になる関連語を選びます。";
+  $("network-core-copy").textContent = relationComparison(card, "left").mainMeaning;
+  $("connection-label").textContent = "ガイドのメモ";
+  $("connection-title").textContent = "2つの説明をくらべて選ぼう";
+  $("connection-copy").textContent = "正解・不正解はありません。気になるつながりを選びます。";
+  $("connection-comparison").hidden = true;
   $("network-link-layer").replaceChildren();
   $("network-next").disabled = true;
   $("network-next").querySelector("span").textContent = state.networkIndex === state.networkQueue.length - 1 ? "結果を見る" : "次のマップ";
@@ -205,6 +230,7 @@ function renderNetwork() {
   let lockedCount = 0;
   ["left", "right"].forEach((side) => {
     const related = card[side];
+    const comparison = relationComparison(card, side);
     const existingLink = getNetworkLink(card, side);
     const button = document.createElement("button");
     button.type = "button";
@@ -217,7 +243,9 @@ function renderNetwork() {
       button.disabled = true;
       button.classList.add("is-locked");
       button.dataset.linked = "true";
-      button.setAttribute("aria-label", `${related.katakana} ${related.english} 接続済み`);
+      button.setAttribute("aria-label", `${related.katakana} ${related.english}、${comparison.relatedMeaning}、接続済み`);
+    } else {
+      button.setAttribute("aria-label", `${related.katakana} ${related.english}、${comparison.relatedMeaning}`);
     }
     const direction = document.createElement("span");
     direction.className = "node-direction";
@@ -226,7 +254,10 @@ function renderNetwork() {
     katakana.textContent = related.katakana;
     const english = document.createElement("small");
     english.textContent = related.english.toLowerCase();
-    button.append(direction, katakana, english);
+    const explanation = document.createElement("p");
+    explanation.className = "node-explanation";
+    explanation.textContent = comparison.relatedMeaning;
+    button.append(direction, katakana, english, explanation);
     if (existingLink) {
       const linked = document.createElement("span");
       linked.className = "node-linked";
@@ -236,13 +267,13 @@ function renderNetwork() {
     nodes.append(button);
   });
   if (lockedCount === 1) {
-    $("connection-label").textContent = "ONE LINK ALREADY ACTIVE";
+    $("connection-label").textContent = "接続済みの枝があります";
     $("connection-title").textContent = "接続済みの枝は選べません";
     $("connection-copy").textContent = "もう一方の関連語を選んで、ネットワークを広げてください。";
   } else if (lockedCount === 2) {
     state.canAdvanceNetwork = true;
     $("network-next").disabled = false;
-    $("connection-label").textContent = "LINKS ALREADY ACTIVE";
+    $("connection-label").textContent = "2本とも接続済み";
     $("connection-title").textContent = "2本とも接続済みです";
     $("connection-copy").textContent = "この語のネットワークはすでに作られています。";
   }
@@ -253,6 +284,7 @@ function selectNetworkSide(side, button) {
   if (!["left", "right"].includes(side) || button.disabled) return;
   const card = state.networkQueue[state.networkIndex];
   const related = card[side];
+  const comparison = relationComparison(card, side);
   state.selectedSide = side;
   state.canAdvanceNetwork = true;
   state.networkChoices[state.networkIndex] = side;
@@ -267,9 +299,15 @@ function selectNetworkSide(side, button) {
     item.setAttribute("aria-pressed", String(selected));
   });
   button.disabled = true;
-  $("connection-label").textContent = related.relation;
-  $("connection-title").textContent = `${card.katakana} → ${related.katakana}`;
-  $("connection-copy").textContent = `${card.english.toLowerCase()} から ${related.english.toLowerCase()} へ接続しました。`;
+  $("connection-label").textContent = "つながりを発見";
+  $("connection-title").textContent = `${card.katakana} と ${related.katakana}`;
+  $("connection-copy").textContent = related.relation;
+  $("comparison-main-word").textContent = `${card.katakana} / ${card.english.toLowerCase()}`;
+  $("comparison-main-copy").textContent = comparison.mainMeaning;
+  $("comparison-related-word").textContent = `${related.katakana} / ${related.english.toLowerCase()}`;
+  $("comparison-related-copy").textContent = comparison.relatedMeaning;
+  $("comparison-relation").textContent = comparison.connection;
+  $("connection-comparison").hidden = false;
   $("network-next").disabled = false;
   renderNetworkLinks(side);
 }
