@@ -19,7 +19,9 @@ const state = {
   networkQueue: [],
   networkIndex: 0,
   networkChoices: [],
+  networkLinks: new Map(),
   selectedSide: null,
+  canAdvanceNetwork: false,
   isAnimating: false,
   drag: null
 };
@@ -39,7 +41,9 @@ function resetState() {
   state.networkQueue = [];
   state.networkIndex = 0;
   state.networkChoices = [];
+  state.networkLinks = new Map();
   state.selectedSide = null;
+  state.canAdvanceNetwork = false;
   state.isAnimating = false;
   state.drag = null;
 }
@@ -79,6 +83,9 @@ function renderCard() {
   const badge = $("card-band");
   badge.textContent = meta.label;
   badge.className = `band-badge ${meta.className}`;
+  const platformBadge = $("card-platform");
+  platformBadge.textContent = card.platformLabel || "";
+  platformBadge.hidden = !card.platformLabel;
   $("scan-card").dataset.difficulty = card.difficulty;
   $("undo-answer").disabled = state.cardIndex === 0;
   state.isAnimating = false;
@@ -153,7 +160,7 @@ function buildNetworkQueue() {
   Object.entries(BAND_META).forEach(([band, meta]) => {
     const candidates = scanCards
       .map((card, index) => ({ card, index, known: state.answers[index] === "known" }))
-      .filter((item) => item.card.difficulty === band)
+      .filter((item) => item.card.difficulty === band && item.known)
       .sort((a, b) => Number(b.known) - Number(a.known) || a.card.order - b.card.order);
     queue.push(...candidates.slice(0, meta.quota).map((item) => item.card));
   });
@@ -164,7 +171,13 @@ function startNetworks() {
   state.networkQueue = buildNetworkQueue();
   state.networkIndex = 0;
   state.networkChoices = Array(state.networkQueue.length).fill(null);
+  state.networkLinks = new Map();
   state.selectedSide = null;
+  state.canAdvanceNetwork = false;
+  if (state.networkQueue.length === 0) {
+    renderFinal();
+    return;
+  }
   showScreen("screen-network");
   renderNetwork();
 }
@@ -173,9 +186,10 @@ function renderNetwork() {
   const card = state.networkQueue[state.networkIndex];
   const meta = bandMeta(card);
   state.selectedSide = null;
+  state.canAdvanceNetwork = false;
   $("network-step").textContent = `${state.networkIndex + 1} / ${state.networkQueue.length}`;
   $("network-title").textContent = `${card.katakana}から広げる`;
-  $("network-depth").textContent = meta.label;
+  $("network-depth").textContent = card.platformLabel ? `${meta.label} · ${card.platformLabel}` : meta.label;
   $("network-depth").className = `depth-chip ${meta.className}`;
   $("network-core-katakana").textContent = card.katakana;
   $("network-core-english").textContent = card.english.toLowerCase();
@@ -188,14 +202,23 @@ function renderNetwork() {
 
   const nodes = $("network-nodes");
   nodes.replaceChildren();
+  let lockedCount = 0;
   ["left", "right"].forEach((side) => {
     const related = card[side];
+    const existingLink = getNetworkLink(card, side);
     const button = document.createElement("button");
     button.type = "button";
     button.className = `network-node network-node-${side}`;
     button.dataset.side = side;
     button.dataset.testid = `network-${side}`;
     button.setAttribute("aria-pressed", "false");
+    if (existingLink) {
+      lockedCount += 1;
+      button.disabled = true;
+      button.classList.add("is-locked");
+      button.dataset.linked = "true";
+      button.setAttribute("aria-label", `${related.katakana} ${related.english} 接続済み`);
+    }
     const direction = document.createElement("span");
     direction.className = "node-direction";
     direction.textContent = side === "left" ? "← LEFT" : "RIGHT →";
@@ -204,33 +227,77 @@ function renderNetwork() {
     const english = document.createElement("small");
     english.textContent = related.english.toLowerCase();
     button.append(direction, katakana, english);
+    if (existingLink) {
+      const linked = document.createElement("span");
+      linked.className = "node-linked";
+      linked.textContent = "接続済み";
+      button.append(linked);
+    }
     nodes.append(button);
   });
+  if (lockedCount === 1) {
+    $("connection-label").textContent = "ONE LINK ALREADY ACTIVE";
+    $("connection-title").textContent = "接続済みの枝は選べません";
+    $("connection-copy").textContent = "もう一方の関連語を選んで、ネットワークを広げてください。";
+  } else if (lockedCount === 2) {
+    state.canAdvanceNetwork = true;
+    $("network-next").disabled = false;
+    $("connection-label").textContent = "LINKS ALREADY ACTIVE";
+    $("connection-title").textContent = "2本とも接続済みです";
+    $("connection-copy").textContent = "この語のネットワークはすでに作られています。";
+  }
+  window.requestAnimationFrame(() => renderNetworkLinks());
 }
 
 function selectNetworkSide(side, button) {
-  if (!['left', 'right'].includes(side)) return;
+  if (!["left", "right"].includes(side) || button.disabled) return;
   const card = state.networkQueue[state.networkIndex];
   const related = card[side];
   state.selectedSide = side;
+  state.canAdvanceNetwork = true;
   state.networkChoices[state.networkIndex] = side;
+  state.networkLinks.set(networkLinkKey(card.english, related.english), {
+    main: card.english.toLowerCase(),
+    related: related.english.toLowerCase(),
+    relation: related.relation
+  });
   document.querySelectorAll(".network-node").forEach((item) => {
     const selected = item === button;
     item.classList.toggle("is-selected", selected);
     item.setAttribute("aria-pressed", String(selected));
   });
+  button.disabled = true;
   $("connection-label").textContent = related.relation;
   $("connection-title").textContent = `${card.katakana} → ${related.katakana}`;
   $("connection-copy").textContent = `${card.english.toLowerCase()} から ${related.english.toLowerCase()} へ接続しました。`;
   $("network-next").disabled = false;
-  renderNetworkLink(button, related, true);
+  renderNetworkLinks(side);
 }
 
-function renderNetworkLink(button, related, animate = false) {
+function networkLinkKey(first, second) {
+  return [first.trim().toLowerCase(), second.trim().toLowerCase()].sort().join("::");
+}
+
+function getNetworkLink(card, side) {
+  return state.networkLinks.get(networkLinkKey(card.english, card[side].english));
+}
+
+function renderNetworkLinks(animateSide = null) {
+  const card = state.networkQueue[state.networkIndex];
+  const layer = $("network-link-layer");
+  layer.replaceChildren();
+  ["left", "right"].forEach((side) => {
+    const link = getNetworkLink(card, side);
+    const button = document.querySelector(`.network-node[data-side="${side}"]`);
+    if (link && button) renderNetworkLink(button, link.relation, side, side === animateSide);
+  });
+}
+
+function renderNetworkLink(button, relationText, side, animate = false) {
   const stage = document.querySelector(".network-stage");
   const core = $("network-core");
   const layer = $("network-link-layer");
-  if (!stage || !core || !button || !related) return;
+  if (!stage || !core || !button || !relationText) return;
   const stageRect = stage.getBoundingClientRect();
   const coreRect = core.getBoundingClientRect();
   const nodeRect = button.getBoundingClientRect();
@@ -244,6 +311,7 @@ function renderNetworkLink(button, related, animate = false) {
   const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
   const beam = document.createElement("div");
   beam.className = `network-link-beam${animate ? " is-animated" : " is-visible"}`;
+  beam.dataset.side = side;
   beam.style.left = `${startX}px`;
   beam.style.top = `${startY}px`;
   beam.style.width = `${length}px`;
@@ -253,14 +321,15 @@ function renderNetworkLink(button, related, animate = false) {
   beam.append(spark);
   const relation = document.createElement("span");
   relation.className = `network-link-relation${animate ? " is-animated" : " is-visible"}`;
-  relation.textContent = related.relation;
+  relation.dataset.side = side;
+  relation.textContent = relationText;
   relation.style.left = `${startX + deltaX * .5}px`;
-  relation.style.top = `${startY + deltaY * .5}px`;
-  layer.replaceChildren(beam, relation);
+  relation.style.top = `${startY + deltaY * .5 - 25}px`;
+  layer.append(beam, relation);
 }
 
 function nextNetwork() {
-  if (state.selectedSide === null) return;
+  if (!state.canAdvanceNetwork) return;
   if (state.networkIndex < state.networkQueue.length - 1) {
     state.networkIndex += 1;
     renderNetwork();
@@ -271,7 +340,7 @@ function nextNetwork() {
 
 function renderFinal() {
   const scores = getScores();
-  const connected = state.networkChoices.filter(Boolean).length;
+  const connected = state.networkLinks.size;
   $("final-summary-text").textContent = `100語中${scores.known}語を「知ってる」と回答`;
   $("final-summary-detail").textContent = `${connected}語から左右の知識ルートを選択。結果は端末内だけで処理し、送信していません。`;
   showScreen("screen-final");
@@ -324,9 +393,8 @@ scanCardElement.addEventListener("pointerup", onPointerEnd);
 scanCardElement.addEventListener("pointercancel", resetDragVisuals);
 
 window.addEventListener("resize", () => {
-  if ($("screen-network").hidden || state.selectedSide === null) return;
-  const button = document.querySelector(`.network-node[data-side="${state.selectedSide}"]`);
-  renderNetworkLink(button, state.networkQueue[state.networkIndex][state.selectedSide]);
+  if ($("screen-network").hidden) return;
+  renderNetworkLinks();
 });
 
 document.addEventListener("click", (event) => {

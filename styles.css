@@ -263,10 +263,13 @@ h2 {
 .card-corner-a { top: 14px; left: 14px; border-top: 2px solid; border-left: 2px solid; }
 .card-corner-b { right: 14px; bottom: 14px; border-right: 2px solid; border-bottom: 2px solid; }
 .card-meta { position: absolute; top: 20px; left: 28px; right: 28px; display: flex; justify-content: space-between; color: var(--muted); font: 700 9px ui-monospace, monospace; letter-spacing: .12em; }
+.card-labels { display:flex; align-items:center; gap:7px; }
 .band-badge { display:inline-flex; width:fit-content; align-items:center; justify-content:center; padding:5px 9px; border:1px solid currentColor; border-radius:99px; font:900 9px/1 ui-monospace,monospace; letter-spacing:.1em; }
 .band-beginner { color:var(--lime); background:rgba(184,255,92,.08); }
 .band-intermediate { color:#c6afff; background:rgba(167,135,255,.1); }
 .band-advanced { color:#ff91a3; background:rgba(255,63,95,.12); }
+.platform-badge { display:inline-flex; padding:5px 8px; border:1px solid rgba(86,233,255,.72); border-radius:5px; background:rgba(86,233,255,.1); color:var(--cyan); font:950 8px/1 ui-monospace,monospace; letter-spacing:.1em; box-shadow:0 0 14px rgba(86,233,255,.12); }
+.platform-badge[hidden] { display:none; }
 .card-face { position: relative; z-index: 1; text-align: center; }
 .card-context { margin-bottom: 18px; color: var(--cyan); font: 800 11px ui-monospace, monospace; letter-spacing: .16em; }
 .hard-badge { width:fit-content; margin:0 auto 10px; display:inline-flex; align-items:center; justify-content:center; padding:5px 9px; border:1px solid #ff91a3; border-radius:5px; background:var(--hard); color:#fff; box-shadow:0 0 18px rgba(255,63,95,.42); font:950 9px/1 ui-monospace,monospace; letter-spacing:.16em; transform:rotate(-2deg); }
@@ -318,7 +321,7 @@ h2 {
 .network-link-beam.is-visible { transform:rotate(var(--link-angle)) scaleX(1); opacity:1; }
 .network-link-spark { position:absolute; top:50%; right:-7px; width:12px; height:12px; border:2px solid #fff; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px #fff, 0 0 22px var(--cyan); transform:translateY(-50%); }
 .network-link-beam.is-animated .network-link-spark { animation:link-spark 620ms ease-out; }
-.network-link-relation { position:absolute; max-width:120px; padding:5px 8px; border:1px solid rgba(86,233,255,.7); border-radius:6px; background:rgba(7,10,22,.94); color:#fff; box-shadow:0 0 16px rgba(86,233,255,.16); font:850 9px/1.25 ui-monospace,monospace; letter-spacing:.06em; text-align:center; white-space:nowrap; opacity:0; transform:translate(-50%,-50%) scale(.88); }
+.network-link-relation { position:absolute; z-index:2; max-width:150px; padding:5px 8px; border:1px solid rgba(86,233,255,.7); border-radius:6px; background:rgba(7,10,22,.96); color:#fff; box-shadow:0 0 16px rgba(86,233,255,.16); font:850 9px/1.25 ui-monospace,monospace; letter-spacing:.04em; text-align:center; white-space:nowrap; opacity:0; transform:translate(-50%,-50%) scale(.88); }
 .network-link-relation.is-animated { animation:relation-in 260ms 360ms ease-out forwards; }
 .network-link-relation.is-visible { opacity:1; transform:translate(-50%,-50%) scale(1); }
 .network-core { z-index: 2; width: 132px; height: 132px; padding: 18px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid var(--lime); border-radius: 50%; background: #111a31; color: var(--lime); font-size: 21px; font-weight: 950; line-height: 1.1; text-align: center; box-shadow: 0 0 40px rgba(184,255,92,.12); }
@@ -332,6 +335,9 @@ h2 {
 .network-node-left { left:5%; }
 .network-node-right { right:5%; }
 .network-node:hover, .network-node.is-selected { border-color:var(--cyan); background:rgba(86,233,255,.13); color:var(--cyan); transform:translateY(calc(-50% - 2px)); }
+.network-node.is-locked, .network-node:disabled { cursor:not-allowed; border-color:rgba(184,255,92,.5); background:rgba(184,255,92,.08); color:var(--lime); opacity:.78; }
+.network-node.is-locked:hover, .network-node:disabled:hover { transform:translateY(-50%); }
+.node-linked { margin-top:6px; color:var(--lime); font:900 7px ui-monospace,monospace; letter-spacing:.1em; }
 .primary-button:disabled { cursor:not-allowed; filter:saturate(.25); opacity:.45; transform:none; }
 .connection-panel { min-height: 126px; margin-bottom: 14px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
 .connection-panel span { display:block; margin-bottom: 7px; color: var(--purple); font: 800 9px ui-monospace, monospace; letter-spacing:.12em; }
