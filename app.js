@@ -1,81 +1,31 @@
 "use strict";
 
-const scanCards = [
-  { entryId: "JE001", difficulty: "standard", katakana: "セーブ", english: "save", context: "システムメニュー", depth: "入口", hook: "進行を残す", bridge: "save はデータだけでなく、人を救う・時間やお金を節約する時にも使えます。" },
-  { entryId: "JE002", difficulty: "standard", katakana: "ロード", english: "load", context: "セーブデータの読込", depth: "入口", hook: "保存したデータを読み込む", bridge: "ここでは load。カタカナだけなら road や lord の可能性もあります。load は荷物を積む・負荷をかける意味にも広がります。" },
-  { entryId: "JE003", difficulty: "standard", katakana: "スタート", english: "start", context: "タイトル画面", depth: "入口", hook: "ゲームを始める", bridge: "日本のゲームで見かける push start。自然な英語でボタン操作を案内するなら press start が基本です。" },
-  { entryId: "JE004", difficulty: "standard", katakana: "コンティニュー", english: "continue", context: "ゲームオーバー後", depth: "入口", hook: "途中から続ける", bridge: "continue はゲームの外でも、話や作業を『続ける』時にそのまま使えます。" },
-  { entryId: "JE005", difficulty: "standard", katakana: "ゲームオーバー", english: "game over", context: "失敗画面", depth: "入口", hook: "プレイの区切りになる", bridge: "game over の over は『終わって』の感覚。over には『越えて』など別の使い方もあります。" },
-  { entryId: "JE006", difficulty: "standard", katakana: "レベル", english: "level", context: "ステータス", depth: "成長", hook: "強さや進行の段階", bridge: "level はゲームの強さだけでなく、水準・段階・平らという意味にも広がります。" },
-  { entryId: "JE007", difficulty: "standard", katakana: "ステージ", english: "stage", context: "進行マップ", depth: "成長", hook: "区切られた面や場面", bridge: "stage はゲームの面だけでなく、舞台や物事の段階にも使えます。" },
-  { entryId: "JE008", difficulty: "standard", katakana: "アイテム", english: "item", context: "持ちもの", depth: "成長", hook: "取得・使用する道具", bridge: "item は道具だけでなく、リストの品目や話題の項目にも使えます。" },
-  { entryId: "JE009", difficulty: "standard", katakana: "スキル", english: "skill", context: "能力画面", depth: "成長", hook: "習得・装備する能力や技", bridge: "skill はゲーム外では、練習や経験で身につけた技能を表します。" },
-  { entryId: "JE010", difficulty: "standard", katakana: "コマンド", english: "command", context: "バトルメニュー", depth: "成長", hook: "次の行動を選ぶ", bridge: "command はゲームの選択肢だけでなく、命令や指揮という意味にもつながります。" },
-  { entryId: "JE011", difficulty: "standard", katakana: "クエスト", english: "quest", context: "依頼リスト", depth: "物語", hook: "依頼を受けて達成する課題", bridge: "quest は、答えや何かを探し求める長い追求という意味にも使えます。" },
-  { entryId: "JE012", difficulty: "standard", katakana: "ミッション", english: "mission", context: "任務画面", depth: "物語", hook: "達成すべき任務", bridge: "mission はゲームの任務から、組織や人が果たす使命へ広がります。" },
-  { entryId: "JE013", difficulty: "standard", katakana: "バトル", english: "battle", context: "戦闘画面", depth: "物語", hook: "敵との戦闘", bridge: "battle は戦闘だけでなく、困難や病気との『闘い』にも使えます。" },
-  { entryId: "JE014", difficulty: "standard", katakana: "ボーナス", english: "bonus", context: "結果画面", depth: "物語", hook: "追加の得点・報酬・特典", bridge: "bonus は、通常の分に追加でもらえるものを表します。" },
-  { entryId: "JE015", difficulty: "standard", katakana: "ラスボス", english: "final boss", context: "物語の終盤", depth: "発見", hook: "最後に立ちはだかる主要ボス", bridge: "日本語では『ラスボス』。自然な英語では last boss より final boss が普通です。" },
-  { entryId: "JE016", difficulty: "hard", katakana: "ビルド", english: "build", context: "スキル・装備構成", depth: "高難度", hook: "戦い方に合わせた構成", bridge: "build は『作る』だけでなく、ゲームでは選んだスキルや装備の組み合わせ全体も指します。" },
-  { entryId: "JE017", difficulty: "hard", katakana: "デバフ", english: "debuff", context: "状態効果", depth: "高難度", hook: "能力を下げる不利な効果", bridge: "debuff はプレイ中の不利な状態効果。ゲーム自体の性能を調整する nerf とは別です。" },
-  { entryId: "JE018", difficulty: "hard", katakana: "スポーン", english: "spawn", context: "敵・アイテムの出現", depth: "高難度", hook: "マップ上に出現する", bridge: "spawn は敵やアイテムが出現すること。もう一度現れるなら re- を足した respawn へつながります。" },
-  { entryId: "JE019", difficulty: "hard", katakana: "ローグライク", english: "roguelike", context: "ゲームジャンル", depth: "高難度", hook: "再挑戦ごとに展開が変わる", bridge: "roguelike は Rogue に『〜のような』の -like が付いた語。ジャンルの境界は作品や説明元で揺れます。" },
-  { entryId: "JE020", difficulty: "hard", katakana: "ハクスラ", english: "hack and slash", context: "アクション・RPG系ジャンル", depth: "高難度", hook: "敵を次々と倒して進む", bridge: "ハクスラは hack and slash の日本語での略し方。英語句だけでは、装備収集や周回まで必ず含むとは限りません。" }
-];
+const TOTAL_CARDS = 100;
+const NETWORK_LIMIT = 10;
+const BAND_META = Object.freeze({
+  beginner: { label: "初級", className: "band-beginner", quota: 4 },
+  intermediate: { label: "中級", className: "band-intermediate", quota: 3 },
+  advanced: { label: "上級", className: "band-advanced", quota: 3 }
+});
 
-const networks = [
-  {
-    coreKatakana: "セーブ",
-    coreEnglish: "save",
-    title: "セーブから広げる",
-    depth: "入口 → 操作",
-    nodes: [
-      { katakana: "ロード", english: "load", relation: "保存 ↔ 読み込み", label: "セーブデータ", title: "ロード / load", copy: "保存した進行を読み込む。load は荷物を積む・負荷をかける意味にも広がります。" },
-      { katakana: "スタート", english: "start", relation: "進行を開始", label: "タイトル画面", title: "スタート / start", copy: "push start で知っていた start から、自然な操作指示 press start へ進めます。" },
-      { katakana: "コンティニュー", english: "continue", relation: "進行を継続", label: "プレイ継続", title: "コンティニュー / continue", copy: "保存した進行を途中から続ける。会話や作業を続ける時にも使えます。" },
-      { katakana: "ゲームオーバー", english: "game over", relation: "進行が終了", label: "プレイ終了", title: "ゲームオーバー / game over", copy: "プレイの区切りを示す句から、over の『終わって』という感覚を発見します。" }
-    ]
-  },
-  {
-    coreKatakana: "レベル",
-    coreEnglish: "level",
-    title: "レベルから広げる",
-    depth: "成長 → システム",
-    nodes: [
-      { katakana: "ステージ", english: "stage", relation: "進行の区切り", label: "進行", title: "ステージ / stage", copy: "区切られた面から、舞台や物事の段階という意味へ広がります。" },
-      { katakana: "アイテム", english: "item", relation: "成長を支える", label: "持ちもの", title: "アイテム / item", copy: "道具から、リストの品目や話題の項目へ広がります。" },
-      { katakana: "スキル", english: "skill", relation: "能力を伸ばす", label: "能力", title: "スキル / skill", copy: "習得した技から、練習や経験で身につけた技能へ広がります。" },
-      { katakana: "コマンド", english: "command", relation: "行動を選ぶ", label: "行動選択", title: "コマンド / command", copy: "行動メニューから、命令や指揮という意味へ広がります。" }
-    ]
-  },
-  {
-    coreKatakana: "クエスト",
-    coreEnglish: "quest",
-    title: "クエストから広げる",
-    depth: "物語 → 発見",
-    nodes: [
-      { katakana: "ミッション", english: "mission", relation: "任務の種類", label: "任務", title: "ミッション / mission", copy: "ゲームの任務から、組織や人が果たす使命へ広がります。" },
-      { katakana: "バトル", english: "battle", relation: "達成の過程", label: "戦闘", title: "バトル / battle", copy: "敵との戦闘から、困難との闘いという比喩へ広がります。" },
-      { katakana: "ボーナス", english: "bonus", relation: "追加の報酬", label: "追加報酬", title: "ボーナス / bonus", copy: "通常の報酬に追加されるものとして、ゲーム外でもそのまま使えます。" },
-      { katakana: "ラスボス", english: "final boss", relation: "終盤の目標", label: "日英のずれ", title: "ラスボス / final boss", copy: "日本語では『ラスト＋ボス』ですが、自然な英語では final boss と表すのが普通です。" }
-    ]
-  }
-];
+if (!Array.isArray(scanCards) || scanCards.length !== TOTAL_CARDS) {
+  throw new Error("The Tinder prototype requires exactly 100 cards.");
+}
 
+const $ = (id) => document.getElementById(id);
 const state = {
   cardIndex: 0,
-  currentAnswer: null,
-  answers: [],
+  answers: Array(TOTAL_CARDS).fill(null),
+  networkQueue: [],
   networkIndex: 0,
-  selectedNodes: new Set(),
-  selectedNodeIndex: null
+  networkChoices: [],
+  selectedSide: null,
+  isAnimating: false,
+  drag: null
 };
 
-const screens = [...document.querySelectorAll(".screen")];
-const $ = (id) => document.getElementById(id);
-
 function showScreen(id) {
-  screens.forEach((screen) => {
+  document.querySelectorAll(".screen").forEach((screen) => {
     const active = screen.id === id;
     screen.hidden = !active;
     screen.classList.toggle("is-active", active);
@@ -85,11 +35,13 @@ function showScreen(id) {
 
 function resetState() {
   state.cardIndex = 0;
-  state.currentAnswer = null;
-  state.answers = [];
+  state.answers = Array(TOTAL_CARDS).fill(null);
+  state.networkQueue = [];
   state.networkIndex = 0;
-  state.selectedNodes = new Set();
-  state.selectedNodeIndex = null;
+  state.networkChoices = [];
+  state.selectedSide = null;
+  state.isAnimating = false;
+  state.drag = null;
 }
 
 function startScan() {
@@ -98,177 +50,218 @@ function startScan() {
   renderCard();
 }
 
+function bandMeta(card) {
+  return BAND_META[card.difficulty] || BAND_META.beginner;
+}
+
+function clearSwipeVisuals() {
+  const card = $("scan-card");
+  card.classList.add("is-resetting");
+  card.classList.remove("is-dragging", "is-exit-left", "is-exit-right");
+  card.style.removeProperty("--drag-x");
+  card.style.removeProperty("--drag-rotation");
+  $("swipe-stamp-known").style.removeProperty("opacity");
+  $("swipe-stamp-unknown").style.removeProperty("opacity");
+  void card.offsetWidth;
+  card.classList.remove("is-resetting");
+}
+
 function renderCard() {
   const card = scanCards[state.cardIndex];
-  const isHard = card.difficulty === "hard";
+  const meta = bandMeta(card);
+  clearSwipeVisuals();
   $("scan-current").textContent = String(state.cardIndex + 1);
-  $("scan-progress").style.width = `${((state.cardIndex + 1) / scanCards.length) * 100}%`;
-  $("card-depth").textContent = card.depth;
+  $("scan-progress").style.width = `${((state.cardIndex + 1) / TOTAL_CARDS) * 100}%`;
   $("card-entry-id").textContent = card.entryId;
   $("card-context").textContent = card.context;
   $("card-katakana").textContent = card.katakana;
-  $("card-english").textContent = card.english;
-  $("card-hook").textContent = card.hook;
-  $("card-bridge").textContent = card.bridge;
-  $("card-hard-badge").hidden = !isHard;
-  $("scan-card").classList.toggle("is-hard", isHard);
-  $("scan-eyebrow").classList.toggle("is-hard", isHard);
-  $("scan-eyebrow").textContent = isHard ? "HARD CHALLENGE" : "QUICK SCAN";
-  $("scan-title").textContent = isHard ? "ここまで知ってる？" : "見たことある？";
-  $("card-prompt").textContent = isHard ? "SteamやPCゲームで、この言葉を見たことがありますか？" : "日本のゲームで、この言葉をどのくらい知っていますか？";
-  $("reveal-label").textContent = isHard ? "HARD WORD FOUND" : "FOUND IN YOUR INVENTORY";
-  $("card-front").hidden = false;
-  $("card-back").hidden = true;
-  state.currentAnswer = null;
+  $("card-english").textContent = card.english.toLowerCase();
+  const badge = $("card-band");
+  badge.textContent = meta.label;
+  badge.className = `band-badge ${meta.className}`;
+  $("scan-card").dataset.difficulty = card.difficulty;
+  $("undo-answer").disabled = state.cardIndex === 0;
+  state.isAnimating = false;
+  state.drag = null;
 }
 
-function answerCard(value) {
-  if (state.currentAnswer !== null) return;
-  state.currentAnswer = value;
-  state.answers[state.cardIndex] = value;
-  $("card-front").hidden = true;
-  $("card-back").hidden = false;
-  $("scan-card").dataset.answerState = String(value);
-  $("card-back").querySelector("button").focus({ preventScroll: true });
+function answerCard(answer) {
+  if (state.isAnimating || !["known", "unknown"].includes(answer)) return;
+  state.isAnimating = true;
+  state.answers[state.cardIndex] = answer;
+  const card = $("scan-card");
+  const isKnown = answer === "known";
+  card.classList.add(isKnown ? "is-exit-right" : "is-exit-left");
+  $(isKnown ? "swipe-stamp-known" : "swipe-stamp-unknown").style.opacity = "1";
+  window.setTimeout(() => {
+    if (state.cardIndex < TOTAL_CARDS - 1) {
+      state.cardIndex += 1;
+      renderCard();
+    } else {
+      state.isAnimating = false;
+      renderResult();
+    }
+  }, 190);
 }
 
-function nextCard() {
-  if (state.currentAnswer === null) return;
-  if (state.cardIndex < scanCards.length - 1) {
-    state.cardIndex += 1;
-    renderCard();
-    return;
-  }
-  renderResult();
+function undoAnswer() {
+  if (state.isAnimating || state.cardIndex === 0) return;
+  state.answers[state.cardIndex - 1] = null;
+  state.cardIndex -= 1;
+  renderCard();
 }
 
 function rankFor(known) {
-  if (known >= 14) return ["LOREKEEPER", "ゲーム英語が、かなり深いところまで育っています。"];
-  if (known >= 11) return ["STRATEGIST", "システムと物語の英語まで、すでに大きな資産です。"];
-  if (known >= 7) return ["NAVIGATOR", "UIを読む力が、日常英語へ伸びる入口になっています。"];
-  return ["SCOUT", "見つけた数が少なくても、知っている場所から安全に始められます。"];
+  if (known >= 85) return ["LOREKEEPER", "ゲームで育った見覚えが、かなり深いところまで広がっています。"];
+  if (known >= 65) return ["STRATEGIST", "基本語からシステム語まで、大きな英語資産が見つかりました。"];
+  if (known >= 40) return ["NAVIGATOR", "ゲームUIを読む経験が、英語へ伸びる入口になっています。"];
+  return ["SCOUT", "数の多さは能力判定ではありません。知っている場所から始められます。"];
 }
 
 function getScores() {
-  const standardAnswers = state.answers.filter((_, index) => scanCards[index]?.difficulty === "standard");
-  const hardAnswers = state.answers.filter((_, index) => scanCards[index]?.difficulty === "hard");
-  const seen = standardAnswers.filter((value) => value >= 1).length;
-  const understood = standardAnswers.filter((value) => value === 2).length;
-  const hardSeen = hardAnswers.filter((value) => value >= 1).length;
-  const hardUnderstood = hardAnswers.filter((value) => value === 2).length;
-  return { seen, understood, fresh: standardAnswers.length - seen, hardSeen, hardUnderstood };
+  const scores = {
+    known: state.answers.filter((answer) => answer === "known").length,
+    unknown: state.answers.filter((answer) => answer === "unknown").length,
+    bands: {}
+  };
+  Object.keys(BAND_META).forEach((band) => {
+    const indices = scanCards.map((card, index) => card.difficulty === band ? index : -1).filter((index) => index >= 0);
+    scores.bands[band] = {
+      total: indices.length,
+      known: indices.filter((index) => state.answers[index] === "known").length
+    };
+  });
+  return scores;
 }
 
 function renderResult() {
-  const { seen, understood, fresh, hardSeen, hardUnderstood } = getScores();
-  const [rank, message] = rankFor(seen);
-  $("result-known").textContent = String(seen);
-  $("result-seen").textContent = String(seen);
-  $("result-understood").textContent = String(understood);
-  $("result-new").textContent = String(fresh);
-  $("result-hard").textContent = `${hardSeen} / 5 発見`;
-  $("result-hard-detail").textContent = `${hardUnderstood}語は意味まで把握（基本ランクの採点外）`;
-  $("result-rank").textContent = `RANK: ${rank}`;
+  const scores = getScores();
+  const [rank, message] = rankFor(scores.known);
+  $("result-known").textContent = String(scores.known);
+  $("result-known-count").textContent = String(scores.known);
+  $("result-unknown-count").textContent = String(scores.unknown);
+  $("result-beginner").textContent = `${scores.bands.beginner.known} / ${scores.bands.beginner.total}`;
+  $("result-intermediate").textContent = `${scores.bands.intermediate.known} / ${scores.bands.intermediate.total}`;
+  $("result-advanced").textContent = `${scores.bands.advanced.known} / ${scores.bands.advanced.total}`;
+  $("result-rank").textContent = `SELF-REPORT: ${rank}`;
   $("result-message").textContent = message;
   showScreen("screen-result");
 }
 
+function buildNetworkQueue() {
+  const queue = [];
+  Object.entries(BAND_META).forEach(([band, meta]) => {
+    const candidates = scanCards
+      .map((card, index) => ({ card, index, known: state.answers[index] === "known" }))
+      .filter((item) => item.card.difficulty === band)
+      .sort((a, b) => Number(b.known) - Number(a.known) || a.card.order - b.card.order);
+    queue.push(...candidates.slice(0, meta.quota).map((item) => item.card));
+  });
+  return queue.slice(0, NETWORK_LIMIT);
+}
+
 function startNetworks() {
+  state.networkQueue = buildNetworkQueue();
   state.networkIndex = 0;
-  state.selectedNodes = new Set();
-  state.selectedNodeIndex = null;
+  state.networkChoices = Array(state.networkQueue.length).fill(null);
+  state.selectedSide = null;
   showScreen("screen-network");
   renderNetwork();
 }
 
 function renderNetwork() {
-  const network = networks[state.networkIndex];
-  $("network-step").textContent = `${state.networkIndex + 1} / ${networks.length}`;
-  $("network-title").textContent = network.title;
-  $("network-depth").textContent = network.depth;
-  $("network-core-katakana").textContent = network.coreKatakana;
-  $("network-core-english").textContent = network.coreEnglish;
-  $("connection-label").textContent = "SELECT A NODE";
-  $("connection-title").textContent = "枝を1つ選んでください";
-  $("connection-copy").textContent = "ゲームの意味を出発点に、日常で使える意味までつなぎます。";
+  const card = state.networkQueue[state.networkIndex];
+  const meta = bandMeta(card);
+  state.selectedSide = null;
+  $("network-step").textContent = `${state.networkIndex + 1} / ${state.networkQueue.length}`;
+  $("network-title").textContent = `${card.katakana}から広げる`;
+  $("network-depth").textContent = meta.label;
+  $("network-depth").className = `depth-chip ${meta.className}`;
+  $("network-core-katakana").textContent = card.katakana;
+  $("network-core-english").textContent = card.english.toLowerCase();
+  $("connection-label").textContent = "CHOOSE LEFT OR RIGHT";
+  $("connection-title").textContent = "つなぎたい方向を1つ選んでください";
+  $("connection-copy").textContent = "正解・不正解はありません。気になる関連語を選びます。";
   $("network-link-layer").replaceChildren();
-  state.selectedNodeIndex = null;
-  $("network-next").querySelector("span").textContent = state.networkIndex === networks.length - 1 ? "結果を見る" : "次のマップ";
+  $("network-next").disabled = true;
+  $("network-next").querySelector("span").textContent = state.networkIndex === state.networkQueue.length - 1 ? "結果を見る" : "次のマップ";
 
   const nodes = $("network-nodes");
   nodes.replaceChildren();
-  network.nodes.forEach((node, index) => {
+  ["left", "right"].forEach((side) => {
+    const related = card[side];
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "network-node";
-    const katakana = document.createElement("span");
-    katakana.textContent = node.katakana;
-    const english = document.createElement("small");
-    english.textContent = node.english;
-    button.append(katakana, english);
-    button.dataset.nodeIndex = String(index);
-    button.dataset.testid = `network-node-${index}`;
+    button.className = `network-node network-node-${side}`;
+    button.dataset.side = side;
+    button.dataset.testid = `network-${side}`;
     button.setAttribute("aria-pressed", "false");
+    const direction = document.createElement("span");
+    direction.className = "node-direction";
+    direction.textContent = side === "left" ? "← LEFT" : "RIGHT →";
+    const katakana = document.createElement("strong");
+    katakana.textContent = related.katakana;
+    const english = document.createElement("small");
+    english.textContent = related.english.toLowerCase();
+    button.append(direction, katakana, english);
     nodes.append(button);
   });
 }
 
-function selectNetworkNode(index, button) {
-  const network = networks[state.networkIndex];
-  const node = network.nodes[index];
-  state.selectedNodes.add(`${state.networkIndex}:${index}`);
-  state.selectedNodeIndex = index;
+function selectNetworkSide(side, button) {
+  if (!['left', 'right'].includes(side)) return;
+  const card = state.networkQueue[state.networkIndex];
+  const related = card[side];
+  state.selectedSide = side;
+  state.networkChoices[state.networkIndex] = side;
   document.querySelectorAll(".network-node").forEach((item) => {
     const selected = item === button;
     item.classList.toggle("is-selected", selected);
     item.setAttribute("aria-pressed", String(selected));
   });
-  $("connection-label").textContent = `${node.label} · ${node.relation}`;
-  $("connection-title").textContent = node.title;
-  $("connection-copy").textContent = node.copy;
-  renderNetworkLink(button, node, true);
+  $("connection-label").textContent = related.relation;
+  $("connection-title").textContent = `${card.katakana} → ${related.katakana}`;
+  $("connection-copy").textContent = `${card.english.toLowerCase()} から ${related.english.toLowerCase()} へ接続しました。`;
+  $("network-next").disabled = false;
+  renderNetworkLink(button, related, true);
 }
 
-function renderNetworkLink(button, node, animate = false) {
+function renderNetworkLink(button, related, animate = false) {
   const stage = document.querySelector(".network-stage");
   const core = $("network-core");
   const layer = $("network-link-layer");
-  if (!stage || !core || !button || !node) return;
-
+  if (!stage || !core || !button || !related) return;
   const stageRect = stage.getBoundingClientRect();
   const coreRect = core.getBoundingClientRect();
   const nodeRect = button.getBoundingClientRect();
-  const startX = coreRect.left + (coreRect.width / 2) - stageRect.left;
-  const startY = coreRect.top + (coreRect.height / 2) - stageRect.top;
-  const endX = nodeRect.left + (nodeRect.width / 2) - stageRect.left;
-  const endY = nodeRect.top + (nodeRect.height / 2) - stageRect.top;
+  const startX = coreRect.left + coreRect.width / 2 - stageRect.left;
+  const startY = coreRect.top + coreRect.height / 2 - stageRect.top;
+  const endX = nodeRect.left + nodeRect.width / 2 - stageRect.left;
+  const endY = nodeRect.top + nodeRect.height / 2 - stageRect.top;
   const deltaX = endX - startX;
   const deltaY = endY - startY;
   const length = Math.hypot(deltaX, deltaY);
   const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
-
   const beam = document.createElement("div");
   beam.className = `network-link-beam${animate ? " is-animated" : " is-visible"}`;
   beam.style.left = `${startX}px`;
   beam.style.top = `${startY}px`;
   beam.style.width = `${length}px`;
   beam.style.setProperty("--link-angle", `${angle}deg`);
-
   const spark = document.createElement("span");
   spark.className = "network-link-spark";
   beam.append(spark);
-
   const relation = document.createElement("span");
   relation.className = `network-link-relation${animate ? " is-animated" : " is-visible"}`;
-  relation.textContent = node.relation;
-  relation.style.left = `${startX + (deltaX * .5)}px`;
-  relation.style.top = `${startY + (deltaY * .5)}px`;
-
+  relation.textContent = related.relation;
+  relation.style.left = `${startX + deltaX * .5}px`;
+  relation.style.top = `${startY + deltaY * .5}px`;
   layer.replaceChildren(beam, relation);
 }
 
 function nextNetwork() {
-  if (state.networkIndex < networks.length - 1) {
+  if (state.selectedSide === null) return;
+  if (state.networkIndex < state.networkQueue.length - 1) {
     state.networkIndex += 1;
     renderNetwork();
     return;
@@ -277,39 +270,84 @@ function nextNetwork() {
 }
 
 function renderFinal() {
-  const { seen, understood, hardSeen } = getScores();
-  $("final-summary-text").textContent = `基本15語中${seen}語に見覚え、HARD 5語中${hardSeen}語を発見`;
-  $("final-summary-detail").textContent = `基本語のうち${understood}語は意味まで把握。HARDはランクの採点外。結果はこの端末内だけで処理し、送信していません。`;
+  const scores = getScores();
+  const connected = state.networkChoices.filter(Boolean).length;
+  $("final-summary-text").textContent = `100語中${scores.known}語を「知ってる」と回答`;
+  $("final-summary-detail").textContent = `${connected}語から左右の知識ルートを選択。結果は端末内だけで処理し、送信していません。`;
   showScreen("screen-final");
 }
 
+function resetDragVisuals() {
+  state.drag = null;
+  $("scan-card").classList.remove("is-dragging");
+  $("scan-card").style.setProperty("--drag-x", "0px");
+  $("scan-card").style.setProperty("--drag-rotation", "0deg");
+  $("swipe-stamp-known").style.opacity = "0";
+  $("swipe-stamp-unknown").style.opacity = "0";
+}
+
+function onPointerDown(event) {
+  if (state.isAnimating || event.button > 0) return;
+  state.drag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, deltaX: 0 };
+  $("scan-card").setPointerCapture?.(event.pointerId);
+  $("scan-card").classList.add("is-dragging");
+}
+
+function onPointerMove(event) {
+  if (!state.drag || state.drag.pointerId !== event.pointerId) return;
+  const deltaX = event.clientX - state.drag.startX;
+  const deltaY = event.clientY - state.drag.startY;
+  state.drag.deltaX = deltaX;
+  if (Math.abs(deltaX) > Math.abs(deltaY)) event.preventDefault();
+  $("scan-card").style.setProperty("--drag-x", `${deltaX}px`);
+  $("scan-card").style.setProperty("--drag-rotation", `${Math.max(-12, Math.min(12, deltaX / 22))}deg`);
+  $("swipe-stamp-known").style.opacity = String(Math.min(1, Math.max(0, deltaX / 100)));
+  $("swipe-stamp-unknown").style.opacity = String(Math.min(1, Math.max(0, -deltaX / 100)));
+}
+
+function onPointerEnd(event) {
+  if (!state.drag || state.drag.pointerId !== event.pointerId) return;
+  const deltaX = state.drag.deltaX;
+  const threshold = Math.min(120, Math.max(72, $("scan-card").clientWidth * .22));
+  state.drag = null;
+  if (Math.abs(deltaX) >= threshold) {
+    answerCard(deltaX > 0 ? "known" : "unknown");
+  } else {
+    resetDragVisuals();
+  }
+}
+
+const scanCardElement = $("scan-card");
+scanCardElement.addEventListener("pointerdown", onPointerDown);
+scanCardElement.addEventListener("pointermove", onPointerMove);
+scanCardElement.addEventListener("pointerup", onPointerEnd);
+scanCardElement.addEventListener("pointercancel", resetDragVisuals);
+
 window.addEventListener("resize", () => {
-  if ($("screen-network").hidden || state.selectedNodeIndex === null) return;
-  const button = document.querySelector(`.network-node[data-node-index="${state.selectedNodeIndex}"]`);
-  renderNetworkLink(button, networks[state.networkIndex].nodes[state.selectedNodeIndex]);
+  if ($("screen-network").hidden || state.selectedSide === null) return;
+  const button = document.querySelector(`.network-node[data-side="${state.selectedSide}"]`);
+  renderNetworkLink(button, state.networkQueue[state.networkIndex][state.selectedSide]);
 });
 
 document.addEventListener("click", (event) => {
   const answer = event.target.closest("[data-answer]");
   if (answer) {
-    answerCard(Number(answer.dataset.answer));
+    answerCard(answer.dataset.answer);
     return;
   }
-
   const node = event.target.closest(".network-node");
   if (node) {
-    selectNetworkNode(Number(node.dataset.nodeIndex), node);
+    selectNetworkSide(node.dataset.side, node);
     return;
   }
-
   const actionTarget = event.target.closest("[data-action]");
   if (!actionTarget) return;
   event.preventDefault();
   const actions = {
     start: startScan,
-    "next-card": nextCard,
     "start-networks": startNetworks,
     "next-network": nextNetwork,
+    undo: undoAnswer,
     restart: startScan,
     home: () => { resetState(); showScreen("screen-home"); }
   };
@@ -317,11 +355,15 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (!$("screen-scan").hidden) {
-    if (state.currentAnswer === null && ["1", "2", "3"].includes(event.key)) {
-      answerCard(Number(event.key) - 1);
-    } else if (state.currentAnswer !== null && event.key === "Enter") {
-      nextCard();
-    }
+  if (!$("screen-scan").hidden && !state.isAnimating && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+    event.preventDefault();
+    answerCard(event.key === "ArrowRight" ? "known" : "unknown");
+    return;
+  }
+  if (!$("screen-network").hidden && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+    event.preventDefault();
+    const side = event.key === "ArrowLeft" ? "left" : "right";
+    const button = document.querySelector(`.network-node[data-side="${side}"]`);
+    if (button) selectNetworkSide(side, button);
   }
 });

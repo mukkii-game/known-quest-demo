@@ -26,7 +26,7 @@
     <section id="screen-home" class="screen is-active" aria-labelledby="home-title">
       <div class="eyebrow"><span class="pulse-dot"></span> ENGLISH ASSET SCAN</div>
       <h1 id="home-title">そのゲーム英語、<br><span>もう知ってる。</span></h1>
-      <p class="lead">勉強を始める前に、ゲームで育っていた基本15語＋HARD 5語をスキャンします。</p>
+      <p class="lead">勉強を始める前に、ゲームで見かけた100語を左右へスワイプ。知っていた英語を発掘します。</p>
 
       <div class="path-picker" aria-label="興味分野">
         <button class="path-card path-card-active" type="button" aria-pressed="true">
@@ -60,9 +60,9 @@
       </div>
 
       <div class="mission-brief">
-        <div><span>WORDS</span><strong>20</strong></div>
-        <div><span>MAPS</span><strong>3</strong></div>
-        <div><span>TIME</span><strong>5–8 min</strong></div>
+        <div><span>WORDS</span><strong>100</strong></div>
+        <div><span>LEVELS</span><strong>初級 / 中級 / 上級</strong></div>
+        <div><span>MAPS</span><strong>最大10</strong></div>
       </div>
 
       <button class="primary-button" type="button" data-action="start" data-testid="start-scan">
@@ -76,40 +76,37 @@
           <div id="scan-eyebrow" class="eyebrow">QUICK SCAN</div>
           <h2 id="scan-title">見たことある？</h2>
         </div>
-        <div class="progress-copy"><span id="scan-current">1</span> / 20</div>
+        <div class="progress-copy"><span id="scan-current">1</span> / 100</div>
       </div>
       <div class="progress-track" aria-hidden="true"><span id="scan-progress"></span></div>
 
-      <article id="scan-card" class="scan-card" aria-live="polite">
+      <div class="swipe-shell">
+      <article id="scan-card" class="scan-card" aria-live="polite" data-testid="scan-card">
         <div class="card-corner card-corner-a" aria-hidden="true"></div>
         <div class="card-corner card-corner-b" aria-hidden="true"></div>
+        <div id="swipe-stamp-unknown" class="swipe-stamp swipe-stamp-unknown" aria-hidden="true">知らない</div>
+        <div id="swipe-stamp-known" class="swipe-stamp swipe-stamp-known" aria-hidden="true">知ってる</div>
         <div class="card-meta">
-          <span id="card-depth">入口</span>
+          <span id="card-band" class="band-badge band-beginner">初級</span>
           <span id="card-entry-id">JE001</span>
         </div>
-        <div id="card-front" class="card-face">
+        <div class="card-face">
           <p id="card-context" class="card-context">システムメニュー</p>
-          <span id="card-hard-badge" class="hard-badge" hidden>HARD</span>
           <div id="card-katakana" class="card-katakana">セーブ</div>
           <div id="card-english" class="card-english">save</div>
-          <p id="card-prompt" class="card-prompt">日本のゲームで、この言葉をどのくらい知っていますか？</p>
-          <div class="answer-grid" role="group" aria-label="既知度を選択">
-            <button type="button" class="answer-button" data-answer="0"><kbd>1</kbd> 初めて見た</button>
-            <button type="button" class="answer-button" data-answer="1"><kbd>2</kbd> 見たことある</button>
-            <button type="button" class="answer-button answer-button-strong" data-answer="2"><kbd>3</kbd> 意味もわかる</button>
-          </div>
-        </div>
-        <div id="card-back" class="card-face card-back" hidden>
-          <p id="reveal-label" class="reveal-label">FOUND IN YOUR INVENTORY</p>
-          <div id="card-hook" class="card-hook">途中から続ける</div>
-          <p id="card-bridge" class="card-bridge">ゲームの外では、話や作業を「続ける」にそのまま使えます。</p>
-          <button class="primary-button primary-button-compact" type="button" data-action="next-card" data-testid="next-card">
-            <span>次の語へ</span><span aria-hidden="true">→</span>
-          </button>
+          <p class="card-prompt">見覚えだけでOK。左か右へ。</p>
         </div>
       </article>
+      </div>
 
-      <p class="keyboard-hint">キーボードなら 1 / 2 / 3 で回答、Enterで次へ</p>
+      <div class="binary-actions" role="group" aria-label="この言葉を知っているか選択">
+        <button id="answer-unknown" type="button" class="answer-button answer-unknown" data-answer="unknown" data-testid="answer-unknown"><span aria-hidden="true">←</span> 知らない</button>
+        <button id="answer-known" type="button" class="answer-button answer-known" data-answer="known" data-testid="answer-known">知ってる <span aria-hidden="true">→</span></button>
+      </div>
+      <div class="scan-footer">
+        <button id="undo-answer" class="text-button" type="button" data-action="undo" data-testid="undo-answer" disabled>1つ戻す</button>
+        <p class="keyboard-hint">スワイプ / ドラッグ / ← → キー</p>
+      </div>
     </section>
 
     <section id="screen-result" class="screen" aria-labelledby="result-title" hidden>
@@ -117,7 +114,7 @@
       <h2 id="result-title">英語資産を発見しました。</h2>
       <div class="result-core">
         <div class="result-ring" aria-label="認識できた語数">
-          <span id="result-known">0</span><small>/ 15</small>
+          <span id="result-known">0</span><small>/ 100</small>
         </div>
         <div>
           <p id="result-rank" class="rank-label">RANK: SCOUT</p>
@@ -125,17 +122,18 @@
         </div>
       </div>
       <div class="result-stats">
-        <div><span>見覚えあり</span><strong id="result-seen">0</strong></div>
-        <div><span>意味もわかる</span><strong id="result-understood">0</strong></div>
-        <div><span>未発見</span><strong id="result-new">0</strong></div>
+        <div><span>知ってる</span><strong id="result-known-count">0</strong></div>
+        <div><span>知らない</span><strong id="result-unknown-count">0</strong></div>
+        <div><span>回答</span><strong>100</strong></div>
       </div>
-      <div class="hard-result">
-        <span class="hard-badge">HARD</span>
-        <div><strong id="result-hard">0 / 5 発見</strong><small id="result-hard-detail">基本ランクの採点外</small></div>
+      <div class="band-results" aria-label="難度別の自己申告結果">
+        <div><span class="band-badge band-beginner">初級</span><strong id="result-beginner">0 / 34</strong></div>
+        <div><span class="band-badge band-intermediate">中級</span><strong id="result-intermediate">0 / 33</strong></div>
+        <div><span class="band-badge band-advanced">上級</span><strong id="result-advanced">0 / 33</strong></div>
       </div>
       <div class="next-mission">
         <span class="next-mission-index">NEXT</span>
-        <div><strong>3つのカタカナ語から、英語を広げる</strong><small>セーブ / レベル / クエスト</small></div>
+        <div><strong>左右どちらへ知識を広げる？</strong><small>あなたの回答から最大10語を選びます</small></div>
       </div>
       <button class="primary-button" type="button" data-action="start-networks" data-testid="start-networks">
         <span>知識マップをひらく</span><span aria-hidden="true">→</span>
@@ -145,26 +143,26 @@
     <section id="screen-network" class="screen" aria-labelledby="network-title" hidden>
       <div class="scan-head">
         <div>
-          <div class="eyebrow">KNOWLEDGE MAP <span id="network-step">1 / 3</span></div>
+          <div class="eyebrow">KNOWLEDGE MAP <span id="network-step">1 / 10</span></div>
           <h2 id="network-title">セーブから広げる</h2>
         </div>
-        <span id="network-depth" class="depth-chip">入口 → 操作</span>
+        <span id="network-depth" class="depth-chip">初級</span>
       </div>
 
       <div class="network-stage">
         <div class="network-lines" aria-hidden="true"></div>
         <div id="network-link-layer" class="network-link-layer" aria-hidden="true"></div>
         <div id="network-core" class="network-core"><span id="network-core-katakana">セーブ</span><small id="network-core-english">save</small></div>
-        <div id="network-nodes" class="network-nodes" aria-label="関連語"></div>
+        <div id="network-nodes" class="network-nodes" aria-label="左右どちらへ知識をつなぐか選択"></div>
       </div>
 
       <div class="connection-panel" aria-live="polite">
-        <span id="connection-label">SELECT A NODE</span>
-        <strong id="connection-title">枝を1つ選んでください</strong>
-        <p id="connection-copy">ゲームの意味を出発点に、日常で使える意味までつなぎます。</p>
+        <span id="connection-label">CHOOSE LEFT OR RIGHT</span>
+        <strong id="connection-title">つなぎたい方向を1つ選んでください</strong>
+        <p id="connection-copy">正解・不正解はありません。気になる関連語を選びます。</p>
       </div>
 
-      <button id="network-next" class="primary-button" type="button" data-action="next-network" data-testid="next-network">
+      <button id="network-next" class="primary-button" type="button" data-action="next-network" data-testid="next-network" disabled>
         <span>次のマップ</span><span aria-hidden="true">→</span>
       </button>
     </section>
@@ -174,17 +172,9 @@
       <h2 id="final-title">ゲームだけでも、<br><span>英語はここまで深くなる。</span></h2>
       <p class="lead">ボタンの一語から、仕事・日常・物語を読む英語へ。知っていた場所から始めればいい。</p>
 
-      <div class="depth-ladder" aria-label="ゲーム英語の深さ">
-        <div><span>01</span><strong>入口</strong><small>セーブ / save</small></div>
-        <div><span>02</span><strong>操作</strong><small>スタート / press start</small></div>
-        <div><span>03</span><strong>成長</strong><small>レベル / level</small></div>
-        <div><span>04</span><strong>物語</strong><small>クエスト / quest</small></div>
-        <div><span>05</span><strong>発見</strong><small>ラスボス / final boss</small></div>
-      </div>
-
       <div class="final-summary">
         <span>YOUR SCAN</span>
-        <strong id="final-summary-text">基本15語＋HARD 5語をスキャン</strong>
+        <strong id="final-summary-text">100語をスキャン</strong>
         <small id="final-summary-detail">結果はこの端末内だけで処理し、送信していません。</small>
       </div>
 
@@ -201,6 +191,7 @@
     <span>教材・権利ともAIドラフト／Human未承認</span>
   </footer>
 
+  <script src="game-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
