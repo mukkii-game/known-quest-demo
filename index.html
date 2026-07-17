@@ -63,11 +63,14 @@
     </section>
 
     <section id="screen-result" class="screen result-screen" aria-labelledby="result-title" hidden>
-      <img class="result-mascot" data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
-      <h2 id="result-title">GAME ENGLISH</h2>
-      <div class="score"><strong id="result-score">0</strong><span>/100</span></div>
-      <div id="result-rank" class="rank-label">SCOUT</div>
-      <button class="primary-button" type="button" data-action="start-networks" data-testid="start-networks">つなぐ</button>
+      <div class="result-stage">
+        <div class="result-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <img class="result-mascot" data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
+        <h2 id="result-title">GAME ENGLISH</h2>
+        <div class="score"><strong id="result-score">0</strong><span>/100</span></div>
+        <div id="result-rank" class="rank-label" aria-live="polite">ゲーム好き</div>
+        <button class="primary-button" type="button" data-action="start-networks" data-testid="start-networks">つなぐ</button>
+      </div>
     </section>
 
     <section id="screen-network" class="screen network-screen" aria-labelledby="network-title" hidden>
@@ -83,19 +86,34 @@
         <div id="network-core" class="network-core">
           <strong id="network-core-katakana">セーブ</strong>
           <span id="network-core-english">save</span>
+          <b id="network-core-meaning" class="network-meaning" hidden></b>
         </div>
         <div id="network-nodes" class="network-nodes" aria-label="左右どちらへ知識をつなぐか選択"></div>
+      </div>
+
+      <div id="network-comparison" class="network-comparison" aria-live="polite" hidden>
+        <div class="network-comparison-row is-main">
+          <strong><span id="comparison-main-katakana"></span><small id="comparison-main-english"></small></strong>
+          <b id="comparison-main-meaning"></b>
+        </div>
+        <div class="network-comparison-row is-related">
+          <strong><span id="comparison-related-katakana"></span><small id="comparison-related-english"></small></strong>
+          <b id="comparison-related-meaning"></b>
+        </div>
       </div>
 
       <div id="network-tap-next" class="tap-next" aria-live="polite" hidden>タップでつぎへ</div>
     </section>
 
     <section id="screen-final" class="screen result-screen" aria-labelledby="final-title" hidden>
-      <img class="result-mascot" data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
-      <h2 id="final-title">GAME ENGLISH</h2>
-      <div class="score"><strong id="final-score">0</strong><span>/100</span></div>
-      <div id="final-rank" class="rank-label">SCOUT</div>
-      <button class="primary-button" type="button" data-action="restart">もう一度</button>
+      <div class="result-stage">
+        <div class="result-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <img class="result-mascot" data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
+        <h2 id="final-title">GAME ENGLISH</h2>
+        <div class="score"><strong id="final-score">0</strong><span>/100</span></div>
+        <div id="final-rank" class="rank-label" aria-live="polite">ゲーム好き</div>
+        <button class="primary-button" type="button" data-action="restart">もう一度</button>
+      </div>
     </section>
   </main>
 

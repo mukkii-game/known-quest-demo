@@ -34,6 +34,7 @@ const state = {
   drag: null,
   routeDrag: null
 };
+let answerAudioContext = null;
 
 function activeCards() {
   return state.route === "sega" ? segaCards : otherCards;
@@ -66,8 +67,50 @@ function speakEnglish(text) {
   speakText(text, "en-US", 0.82, 1);
 }
 
-function speakAnswerFeedback(answer) {
-  speakText(answer === "known" ? "セーガー" : "ガーセー", "ja-JP", 0.78, answer === "known" ? 1.08 : 0.9);
+function getAnswerAudioContext() {
+  if (answerAudioContext) return answerAudioContext;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  try { answerAudioContext = new AudioContextClass(); } catch { return null; }
+  return answerAudioContext;
+}
+
+function playToneSequence(notes, volume) {
+  if (!state.soundEnabled) return;
+  const context = getAnswerAudioContext();
+  if (!context) return;
+  try {
+    if (context.state === "suspended") context.resume?.();
+    const startAt = context.currentTime + 0.012;
+    notes.forEach(({ frequency, offset, duration }) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, startAt + offset);
+      gain.gain.setValueAtTime(0.0001, startAt + offset);
+      gain.gain.exponentialRampToValueAtTime(volume, startAt + offset + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + offset + duration);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startAt + offset);
+      oscillator.stop(startAt + offset + duration + 0.01);
+    });
+  } catch {}
+}
+
+function playAnswerFeedback(answer) {
+  if (answer === "known") {
+    playToneSequence([
+      { frequency: 523.25, offset: 0, duration: 0.11 },
+      { frequency: 659.25, offset: 0.075, duration: 0.11 },
+      { frequency: 783.99, offset: 0.15, duration: 0.14 }
+    ], 0.055);
+  } else {
+    playToneSequence([
+      { frequency: 329.63, offset: 0, duration: 0.11 },
+      { frequency: 261.63, offset: 0.09, duration: 0.13 }
+    ], 0.018);
+  }
 }
 
 function updateSoundToggle() {
@@ -211,7 +254,8 @@ function answerCard(answer) {
   $("screen-scan").classList.add("is-revealing");
   document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = true; });
   $("undo-answer").disabled = true;
-  speakAnswerFeedback(answer);
+  cancelSpeech();
+  playAnswerFeedback(answer);
   state.answerTimer = window.setTimeout(() => {
     state.answerTimer = null;
     if (state.cardIndex < routeTotal() - 1) {
@@ -250,18 +294,33 @@ function getScores() {
   };
 }
 
-function rankFor(score) {
-  if (score >= 90) return "LORE MASTER";
-  if (score >= 70) return "STRATEGIST";
-  if (score >= 45) return "NAVIGATOR";
-  return "SCOUT";
+function rankFor(score, route = state.route) {
+  const label = route === "sega" ? "セガ" : "ゲーム";
+  if (score >= 80) return `${label}マニア！`;
+  if (score >= 50) return `${label}ファン！`;
+  return `ふつうの${label}好き`;
+}
+
+function resultTier(score) {
+  if (score >= 80) return "high";
+  if (score >= 50) return "mid";
+  return "low";
+}
+
+function celebrateResult(screenId, score) {
+  const screen = $(screenId);
+  screen.dataset.tier = resultTier(score);
+  screen.classList.remove("is-celebrating");
+  void screen.offsetWidth;
+  screen.classList.add("is-celebrating");
 }
 
 function renderResult() {
   const scores = getScores();
   $("result-score").textContent = String(scores.score);
-  $("result-rank").textContent = rankFor(scores.score);
+  $("result-rank").textContent = rankFor(scores.score, state.route);
   showScreen("screen-result");
+  celebrateResult("screen-result", scores.score);
 }
 
 function buildNetworkQueue() {
@@ -288,6 +347,7 @@ function buildNetworkQueue() {
         questionId: `${card.questionId}-W${index + 1}`,
         katakana: term.katakana,
         english: term.english,
+        meaningJa: term.meaningJa,
         sourceTitle: term.sourceTitle || card.sourceTitle,
         left: term.left,
         right: term.right,
@@ -325,6 +385,10 @@ function renderNetwork() {
   $("network-source-title").hidden = !card.sourceTitle;
   $("network-core-katakana").textContent = card.katakana;
   $("network-core-english").textContent = card.english.toLowerCase();
+  const coreMeaning = $("network-core-meaning");
+  coreMeaning.textContent = card.meaningJa || "";
+  coreMeaning.hidden = !card.meaningJa;
+  hideNetworkComparison();
 
   const container = $("network-nodes");
   container.replaceChildren();
@@ -337,10 +401,13 @@ function renderNetwork() {
     button.className = "network-node";
     button.dataset.side = side;
     button.dataset.testid = `network-${side}`;
-    button.innerHTML = `<strong></strong><span></span>`;
+    button.innerHTML = `<strong></strong><span></span><b class="network-meaning" hidden></b>`;
     button.querySelector("strong").textContent = related.katakana;
     button.querySelector("span").textContent = related.english.toLowerCase();
-    button.setAttribute("aria-label", `${related.katakana}、${related.relation}`);
+    const relatedMeaning = button.querySelector("b");
+    relatedMeaning.textContent = related.meaningJa || "";
+    relatedMeaning.hidden = !related.meaningJa;
+    button.setAttribute("aria-label", `${related.katakana}、${related.meaningJa || related.relation || "関連語"}`);
     if (existingLink) {
       button.disabled = true;
       button.classList.add("is-locked");
@@ -363,15 +430,38 @@ function selectNetworkSide(side, button) {
   state.networkLinks.set(networkLinkKey(card.english, related.english), {
     first: card.english,
     second: related.english,
-    relation: related.relation
+    relation: relationFor(card, related),
+    mainMeaning: card.meaningJa || "",
+    relatedMeaning: related.meaningJa || ""
   });
   $("network-nodes").querySelectorAll(".network-node").forEach((node) => {
     node.disabled = true;
     if (node === button) node.classList.add("is-selected");
     else if (!node.classList.contains("is-locked")) node.classList.add("is-muted");
   });
+  showNetworkComparison(card, related);
   setNetworkReady();
   renderNetworkLinks(side);
+}
+
+function relationFor(card, related) {
+  if (card.meaningJa && related.meaningJa) return `${card.meaningJa} ↔ ${related.meaningJa}`;
+  return related.relation || "関連語";
+}
+
+function hideNetworkComparison() {
+  $("network-comparison").hidden = true;
+}
+
+function showNetworkComparison(card, related) {
+  if (!card.meaningJa || !related.meaningJa) return;
+  $("comparison-main-katakana").textContent = card.katakana;
+  $("comparison-main-english").textContent = card.english.toLowerCase();
+  $("comparison-main-meaning").textContent = card.meaningJa;
+  $("comparison-related-katakana").textContent = related.katakana;
+  $("comparison-related-english").textContent = related.english.toLowerCase();
+  $("comparison-related-meaning").textContent = related.meaningJa;
+  $("network-comparison").hidden = false;
 }
 
 function setNetworkReady() {
@@ -450,8 +540,9 @@ function nextNetwork() {
 function renderFinal() {
   const scores = getScores();
   $("final-score").textContent = String(scores.score);
-  $("final-rank").textContent = rankFor(scores.score);
+  $("final-rank").textContent = rankFor(scores.score, state.route);
   showScreen("screen-final");
+  celebrateResult("screen-final", scores.score);
 }
 
 function resetDragVisuals() {
