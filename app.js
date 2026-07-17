@@ -8,12 +8,13 @@ const BAND_META = Object.freeze({
   advanced: { quota: 3, weight: 3 }
 });
 
-if (!Array.isArray(scanCards) || scanCards.length !== TOTAL_CARDS) {
-  throw new Error("The game-English quiz requires exactly 100 cards.");
+if (!Array.isArray(otherCards) || otherCards.length !== TOTAL_CARDS || !Array.isArray(segaCards) || segaCards.length !== TOTAL_CARDS) {
+  throw new Error("Both game-English routes require exactly 100 cards.");
 }
 
 const $ = (id) => document.getElementById(id);
 const state = {
+  route: null,
   cardIndex: 0,
   answers: Array(TOTAL_CARDS).fill(null),
   networkQueue: [],
@@ -23,8 +24,13 @@ const state = {
   selectedSide: null,
   canAdvanceNetwork: false,
   isAnimating: false,
-  drag: null
+  drag: null,
+  routeDrag: null
 };
+
+function activeCards() {
+  return state.route === "sega" ? segaCards : otherCards;
+}
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((screen) => {
@@ -46,9 +52,31 @@ function resetState() {
   state.canAdvanceNetwork = false;
   state.isAnimating = false;
   state.drag = null;
+  state.routeDrag = null;
+}
+
+function setRouteVisuals() {
+  if (state.route) document.body.dataset.route = state.route;
+  else document.body.removeAttribute("data-route");
+  const sega = state.route === "sega";
+  document.querySelectorAll("[data-route-avatar]").forEach((avatar) => {
+    avatar.src = sega ? "sega-guide-avatar.png" : "guide-avatar-v2.png";
+    avatar.alt = sega ? "AI生成のセガ派用オリジナル仮ガイドキャラクター" : "AI生成の仮ガイドキャラクター";
+  });
+  const label = sega ? "SEGA ENGLISH" : "GAME ENGLISH";
+  $("result-title").textContent = label;
+  $("final-title").textContent = label;
+}
+
+function chooseRoute(route) {
+  if (!["sega", "other"].includes(route)) return;
+  state.route = route;
+  setRouteVisuals();
+  startScan();
 }
 
 function startScan() {
+  if (!state.route) return;
   resetState();
   showScreen("screen-scan");
   renderCard();
@@ -75,13 +103,28 @@ function renderProgress() {
 }
 
 function renderCard() {
-  const card = scanCards[state.cardIndex];
+  const card = activeCards()[state.cardIndex];
   clearSwipeVisuals();
   $("scan-current").textContent = String(state.cardIndex + 1).padStart(2, "0");
   $("card-katakana").textContent = card.titleDisplay || card.katakana;
   $("card-english").textContent = card.english.toLowerCase();
+  const badge = $("card-badge");
+  badge.hidden = !card.platformLabel;
+  badge.textContent = card.platformLabel || "";
+  const compare = $("card-compare");
+  compare.replaceChildren();
+  const comparisons = Array.isArray(card.compare) ? card.compare : [];
+  comparisons.forEach((item) => {
+    const row = document.createElement("div");
+    row.innerHTML = "<strong></strong><span></span>";
+    row.querySelector("strong").textContent = item.label;
+    row.querySelector("span").textContent = item.text;
+    compare.append(row);
+  });
+  compare.hidden = comparisons.length === 0;
   $("scan-card").dataset.difficulty = card.difficulty;
-  $("scan-card").classList.toggle("is-title", card.hookType === "game_title");
+  $("scan-card").classList.toggle("is-title", ["game_title", "sega_title", "sega_language_gap"].includes(card.hookType));
+  $("scan-card").classList.toggle("is-house-term", card.hookType === "sega_house_term");
   $("scan-card").setAttribute("aria-label", `${card.titleDisplay || card.katakana}、${card.english}`);
   $("undo-answer").disabled = state.cardIndex === 0;
   renderProgress();
@@ -119,7 +162,7 @@ function getScores() {
   let weightedKnown = 0;
   let weightedTotal = 0;
   let known = 0;
-  scanCards.forEach((card, index) => {
+  activeCards().forEach((card, index) => {
     const weight = BAND_META[card.difficulty]?.weight || 1;
     weightedTotal += weight;
     if (state.answers[index] === "known") {
@@ -149,7 +192,7 @@ function renderResult() {
 }
 
 function buildNetworkQueue() {
-  const knownCards = scanCards.filter((_, index) => state.answers[index] === "known");
+  const knownCards = activeCards().filter((_, index) => state.answers[index] === "known");
   const queue = [];
   Object.entries(BAND_META).forEach(([band, meta]) => {
     queue.push(...knownCards.filter((card) => card.difficulty === band).slice(0, meta.quota));
@@ -349,6 +392,36 @@ function onPointerEnd(event) {
   else resetDragVisuals();
 }
 
+function resetRouteDragVisuals() {
+  const card = $("route-card");
+  card.classList.remove("is-dragging");
+  card.style.setProperty("--route-x", "0px");
+  card.style.setProperty("--route-rotation", "0deg");
+}
+
+function onRoutePointerDown(event) {
+  if (event.button > 0) return;
+  state.routeDrag = { pointerId: event.pointerId, startX: event.clientX, currentX: event.clientX };
+  $("route-card").classList.add("is-dragging");
+  $("route-card").setPointerCapture?.(event.pointerId);
+}
+
+function onRoutePointerMove(event) {
+  if (!state.routeDrag || state.routeDrag.pointerId !== event.pointerId) return;
+  state.routeDrag.currentX = event.clientX;
+  const delta = event.clientX - state.routeDrag.startX;
+  $("route-card").style.setProperty("--route-x", `${delta}px`);
+  $("route-card").style.setProperty("--route-rotation", `${delta / 24}deg`);
+}
+
+function onRoutePointerEnd(event) {
+  if (!state.routeDrag || state.routeDrag.pointerId !== event.pointerId) return;
+  const delta = state.routeDrag.currentX - state.routeDrag.startX;
+  state.routeDrag = null;
+  if (Math.abs(delta) >= 72) chooseRoute(delta < 0 ? "sega" : "other");
+  else resetRouteDragVisuals();
+}
+
 function initializeProgressPips() {
   const fragment = document.createDocumentFragment();
   for (let index = 0; index < 10; index += 1) fragment.append(document.createElement("i"));
@@ -360,6 +433,11 @@ $("scan-card").addEventListener("pointermove", onPointerMove);
 $("scan-card").addEventListener("pointerup", onPointerEnd);
 $("scan-card").addEventListener("pointercancel", onPointerEnd);
 
+$("route-card").addEventListener("pointerdown", onRoutePointerDown);
+$("route-card").addEventListener("pointermove", onRoutePointerMove);
+$("route-card").addEventListener("pointerup", onRoutePointerEnd);
+$("route-card").addEventListener("pointercancel", onRoutePointerEnd);
+
 $("screen-network").addEventListener("click", (event) => {
   const node = event.target.closest(".network-node");
   if (node) {
@@ -370,6 +448,11 @@ $("screen-network").addEventListener("click", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const route = event.target.closest("button[data-route]");
+  if (route) {
+    chooseRoute(route.dataset.route);
+    return;
+  }
   const answer = event.target.closest("[data-answer]");
   if (answer) {
     answerCard(answer.dataset.answer);
@@ -378,16 +461,26 @@ document.addEventListener("click", (event) => {
   const actionTarget = event.target.closest("[data-action]");
   if (!actionTarget) return;
   const actions = {
-    start: startScan,
     undo: undoAnswer,
     "start-networks": startNetworks,
     restart: startScan,
-    home: () => { resetState(); showScreen("screen-home"); }
+    home: () => {
+      resetState();
+      state.route = null;
+      setRouteVisuals();
+      resetRouteDragVisuals();
+      showScreen("screen-home");
+    }
   };
   actions[actionTarget.dataset.action]?.();
 });
 
 document.addEventListener("keydown", (event) => {
+  if (!$("screen-home").hidden) {
+    if (event.key === "ArrowLeft") chooseRoute("sega");
+    if (event.key === "ArrowRight") chooseRoute("other");
+    return;
+  }
   if (!$("screen-scan").hidden && !state.isAnimating) {
     if (event.key === "ArrowLeft") answerCard("unknown");
     if (event.key === "ArrowRight") answerCard("known");
@@ -409,4 +502,5 @@ window.addEventListener("resize", () => {
 });
 
 initializeProgressPips();
+setRouteVisuals();
 showScreen("screen-home");

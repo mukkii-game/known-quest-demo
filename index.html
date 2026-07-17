@@ -7,7 +7,7 @@
   <meta name="description" content="ゲームで知っていた英語を100問で発掘する、ローカル完結のM0体験プロトタイプ。">
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" href="data:,">
-  <title>KNOWN QUEST — ゲーム英語100</title>
+  <title>KNOWN QUEST — セガ派？ その他派？</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -18,10 +18,17 @@
 
   <main id="app" class="app-shell">
     <section id="screen-home" class="screen is-active" aria-labelledby="home-title">
-      <img class="home-mascot" src="guide-avatar-v2.png" alt="手を振るAI生成の仮ガイドキャラクター">
-      <h1 id="home-title">ゲーム英語<br><span>100問</span></h1>
-      <div class="home-pips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-      <button class="primary-button" type="button" data-action="start" data-testid="start-scan">スタート</button>
+      <div id="route-card" class="route-card" data-testid="route-card">
+        <div class="route-mascots" aria-hidden="true">
+          <img src="sega-guide-avatar.png" alt="">
+          <img src="guide-avatar-v2.png" alt="">
+        </div>
+        <h1 id="home-title">あなたは<br><span>どっち派？</span></h1>
+      </div>
+      <div class="route-actions" role="group" aria-label="ゲーム英語ルートを左右から選択">
+        <button class="route-button route-sega" type="button" data-route="sega" data-testid="route-sega"><span aria-hidden="true">←</span> セガ派</button>
+        <button class="route-button route-other" type="button" data-route="other" data-testid="route-other">その他派 <span aria-hidden="true">→</span></button>
+      </div>
     </section>
 
     <section id="screen-scan" class="screen" aria-labelledby="scan-title" hidden>
@@ -36,8 +43,10 @@
           <div id="swipe-stamp-unknown" class="swipe-stamp swipe-stamp-unknown" aria-hidden="true">知らない</div>
           <div id="swipe-stamp-known" class="swipe-stamp swipe-stamp-known" aria-hidden="true">知ってる</div>
           <div class="card-face">
+            <div id="card-badge" class="card-badge" hidden>SEGA MANIA</div>
             <div id="card-katakana" class="card-katakana">セーブ</div>
             <div id="card-english" class="card-english">save</div>
+            <div id="card-compare" class="card-compare" hidden></div>
           </div>
         </article>
       </div>
@@ -50,7 +59,7 @@
     </section>
 
     <section id="screen-result" class="screen result-screen" aria-labelledby="result-title" hidden>
-      <img class="result-mascot" src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
+      <img class="result-mascot" data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
       <h2 id="result-title">GAME ENGLISH</h2>
       <div class="score"><strong id="result-score">0</strong><span>/100</span></div>
       <div id="result-rank" class="rank-label">SCOUT</div>
@@ -60,7 +69,7 @@
     <section id="screen-network" class="screen network-screen" aria-labelledby="network-title" hidden>
       <div class="network-head">
         <strong id="network-step">1/10</strong>
-        <img src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
+        <img data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
       </div>
       <h2 id="network-title">セーブ</h2>
 
@@ -77,7 +86,7 @@
     </section>
 
     <section id="screen-final" class="screen result-screen" aria-labelledby="final-title" hidden>
-      <img class="result-mascot" src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
+      <img class="result-mascot" data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
       <h2 id="final-title">GAME ENGLISH</h2>
       <div class="score"><strong id="final-score">0</strong><span>/100</span></div>
       <div id="final-rank" class="rank-label">SCOUT</div>
