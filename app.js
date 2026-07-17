@@ -1,8 +1,9 @@
 "use strict";
 
-const TOTAL_CARDS = 100;
-const NETWORK_LIMIT = 10;
-const DEFAULT_ANSWER_REVEAL_MS = 1000;
+const OTHER_CARD_COUNT = 100;
+const SEGA_CARD_COUNT = 30;
+const OTHER_NETWORK_LIMIT = 10;
+const DEFAULT_ANSWER_REVEAL_MS = 2000;
 const ANSWER_REVEAL_MS = Number.isFinite(window.__KQ_TEST_REVEAL_MS)
   ? Math.max(80, Number(window.__KQ_TEST_REVEAL_MS))
   : DEFAULT_ANSWER_REVEAL_MS;
@@ -12,15 +13,15 @@ const BAND_META = Object.freeze({
   advanced: { quota: 3, weight: 3 }
 });
 
-if (!Array.isArray(otherCards) || otherCards.length !== TOTAL_CARDS || !Array.isArray(segaCards) || segaCards.length !== TOTAL_CARDS) {
-  throw new Error("Both game-English routes require exactly 100 cards.");
+if (!Array.isArray(otherCards) || otherCards.length !== OTHER_CARD_COUNT || !Array.isArray(segaCards) || segaCards.length !== SEGA_CARD_COUNT) {
+  throw new Error("The game-English routes require 100 Other cards and 30 Sega title cards.");
 }
 
 const $ = (id) => document.getElementById(id);
 const state = {
   route: null,
   cardIndex: 0,
-  answers: Array(TOTAL_CARDS).fill(null),
+  answers: [],
   networkQueue: [],
   networkIndex: 0,
   networkChoices: [],
@@ -36,6 +37,10 @@ const state = {
 
 function activeCards() {
   return state.route === "sega" ? segaCards : otherCards;
+}
+
+function routeTotal() {
+  return activeCards().length;
 }
 
 function cancelSpeech() {
@@ -93,7 +98,7 @@ function resetState() {
   state.answerTimer = null;
   cancelSpeech();
   state.cardIndex = 0;
-  state.answers = Array(TOTAL_CARDS).fill(null);
+  state.answers = Array(routeTotal()).fill(null);
   state.networkQueue = [];
   state.networkIndex = 0;
   state.networkChoices = [];
@@ -145,7 +150,7 @@ function clearSwipeVisuals() {
 }
 
 function renderProgress() {
-  const currentBlock = Math.floor(state.cardIndex / 10);
+  const currentBlock = Math.min(9, Math.floor((state.cardIndex / routeTotal()) * 10));
   $("progress-pips").querySelectorAll("i").forEach((pip, index) => {
     pip.classList.toggle("is-done", index < currentBlock);
     pip.classList.toggle("is-now", index === currentBlock);
@@ -159,6 +164,8 @@ function renderCard() {
   $("scan-card").classList.remove("is-answer-known", "is-answer-unknown");
   document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = false; });
   $("scan-current").textContent = String(state.cardIndex + 1).padStart(2, "0");
+  $("scan-total").textContent = String(routeTotal());
+  $("scan-title").textContent = `ゲーム英語${routeTotal()}問`;
   $("card-katakana").textContent = card.titleDisplay || card.katakana;
   $("card-english").textContent = card.english.toLowerCase();
   const answer = $("card-answer");
@@ -203,10 +210,11 @@ function answerCard(answer) {
   $("card-answer").hidden = false;
   $("screen-scan").classList.add("is-revealing");
   document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = true; });
+  $("undo-answer").disabled = true;
   speakAnswerFeedback(answer);
   state.answerTimer = window.setTimeout(() => {
     state.answerTimer = null;
-    if (state.cardIndex < TOTAL_CARDS - 1) {
+    if (state.cardIndex < routeTotal() - 1) {
       state.cardIndex += 1;
       renderCard();
     } else {
@@ -259,17 +267,21 @@ function renderResult() {
 function buildNetworkQueue() {
   const knownCards = activeCards().filter((_, index) => state.answers[index] === "known");
   const parentQueue = [];
-  Object.entries(BAND_META).forEach(([band, meta]) => {
-    parentQueue.push(...knownCards.filter((card) => card.difficulty === band).slice(0, meta.quota));
-  });
-  knownCards.forEach((card) => {
-    if (parentQueue.length < NETWORK_LIMIT && !parentQueue.includes(card)) parentQueue.push(card);
-  });
+  const networkLimit = state.route === "sega" ? Number.POSITIVE_INFINITY : OTHER_NETWORK_LIMIT;
+  if (state.route === "sega") parentQueue.push(...knownCards);
+  else {
+    Object.entries(BAND_META).forEach(([band, meta]) => {
+      parentQueue.push(...knownCards.filter((card) => card.difficulty === band).slice(0, meta.quota));
+    });
+    knownCards.forEach((card) => {
+      if (parentQueue.length < networkLimit && !parentQueue.includes(card)) parentQueue.push(card);
+    });
+  }
   const queue = [];
   parentQueue.forEach((card) => {
     const terms = Array.isArray(card.networkTerms) && card.networkTerms.length > 0 ? card.networkTerms : [card];
+    if (queue.length + terms.length > networkLimit) return;
     terms.forEach((term, index) => {
-      if (queue.length >= NETWORK_LIMIT) return;
       queue.push(terms.length === 1 ? card : {
         ...card,
         entryId: `${card.entryId}-W${index + 1}`,
@@ -283,7 +295,7 @@ function buildNetworkQueue() {
       });
     });
   });
-  return queue.slice(0, NETWORK_LIMIT);
+  return queue;
 }
 
 function startNetworks() {
