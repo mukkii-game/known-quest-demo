@@ -3,25 +3,13 @@
 const TOTAL_CARDS = 100;
 const NETWORK_LIMIT = 10;
 const BAND_META = Object.freeze({
-  beginner: { label: "初級", className: "band-beginner", quota: 4 },
-  intermediate: { label: "中級", className: "band-intermediate", quota: 3 },
-  advanced: { label: "上級", className: "band-advanced", quota: 3 }
-});
-const RELATION_COPY_OVERRIDES = Object.freeze({
-  "guide::tutorial": Object.freeze({
-    mainMeaning: "最初に基本内容を、\nていねいに導くこと",
-    relatedMeaning: "進め方を、ていねいに導くこと",
-    connection: "共通点は「ていねいに導く」。tutorial は最初の基本にしぼります。"
-  }),
-  "training::tutorial": Object.freeze({
-    mainMeaning: "最初に基本内容を、\nていねいに導くこと",
-    relatedMeaning: "実際に試しながら、操作を身につけること",
-    connection: "tutorial は最初に説明し、training は実際に試して身につけます。"
-  })
+  beginner: { quota: 4, weight: 1 },
+  intermediate: { quota: 3, weight: 2 },
+  advanced: { quota: 3, weight: 3 }
 });
 
 if (!Array.isArray(scanCards) || scanCards.length !== TOTAL_CARDS) {
-  throw new Error("The Tinder prototype requires exactly 100 cards.");
+  throw new Error("The game-English quiz requires exactly 100 cards.");
 }
 
 const $ = (id) => document.getElementById(id);
@@ -44,7 +32,7 @@ function showScreen(id) {
     screen.hidden = !active;
     screen.classList.toggle("is-active", active);
   });
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 function resetState() {
@@ -66,10 +54,6 @@ function startScan() {
   renderCard();
 }
 
-function bandMeta(card) {
-  return BAND_META[card.difficulty] || BAND_META.beginner;
-}
-
 function clearSwipeVisuals() {
   const card = $("scan-card");
   card.classList.add("is-resetting");
@@ -82,24 +66,25 @@ function clearSwipeVisuals() {
   card.classList.remove("is-resetting");
 }
 
+function renderProgress() {
+  const currentBlock = Math.floor(state.cardIndex / 10);
+  $("progress-pips").querySelectorAll("i").forEach((pip, index) => {
+    pip.classList.toggle("is-done", index < currentBlock);
+    pip.classList.toggle("is-now", index === currentBlock);
+  });
+}
+
 function renderCard() {
   const card = scanCards[state.cardIndex];
-  const meta = bandMeta(card);
   clearSwipeVisuals();
-  $("scan-current").textContent = String(state.cardIndex + 1);
-  $("scan-progress").style.width = `${((state.cardIndex + 1) / TOTAL_CARDS) * 100}%`;
-  $("card-entry-id").textContent = card.entryId;
-  $("card-context").textContent = card.context;
-  $("card-katakana").textContent = card.katakana;
+  $("scan-current").textContent = String(state.cardIndex + 1).padStart(2, "0");
+  $("card-katakana").textContent = card.titleDisplay || card.katakana;
   $("card-english").textContent = card.english.toLowerCase();
-  const badge = $("card-band");
-  badge.textContent = meta.label;
-  badge.className = `band-badge ${meta.className}`;
-  const platformBadge = $("card-platform");
-  platformBadge.textContent = card.platformLabel || "";
-  platformBadge.hidden = !card.platformLabel;
   $("scan-card").dataset.difficulty = card.difficulty;
+  $("scan-card").classList.toggle("is-title", card.hookType === "game_title");
+  $("scan-card").setAttribute("aria-label", `${card.titleDisplay || card.katakana}、${card.english}`);
   $("undo-answer").disabled = state.cardIndex === 0;
+  renderProgress();
   state.isAnimating = false;
   state.drag = null;
 }
@@ -120,7 +105,7 @@ function answerCard(answer) {
       state.isAnimating = false;
       renderResult();
     }
-  }, 190);
+  }, 180);
 }
 
 function undoAnswer() {
@@ -130,51 +115,47 @@ function undoAnswer() {
   renderCard();
 }
 
-function rankFor(known) {
-  if (known >= 85) return ["LOREKEEPER", "ゲームで育った見覚えが、かなり深いところまで広がっています。"];
-  if (known >= 65) return ["STRATEGIST", "基本語からシステム語まで、大きな英語資産が見つかりました。"];
-  if (known >= 40) return ["NAVIGATOR", "ゲームUIを読む経験が、英語へ伸びる入口になっています。"];
-  return ["SCOUT", "数の多さは能力判定ではありません。知っている場所から始められます。"];
+function getScores() {
+  let weightedKnown = 0;
+  let weightedTotal = 0;
+  let known = 0;
+  scanCards.forEach((card, index) => {
+    const weight = BAND_META[card.difficulty]?.weight || 1;
+    weightedTotal += weight;
+    if (state.answers[index] === "known") {
+      known += 1;
+      weightedKnown += weight;
+    }
+  });
+  return {
+    known,
+    unknown: state.answers.filter((answer) => answer === "unknown").length,
+    score: Math.round((weightedKnown / weightedTotal) * 100)
+  };
 }
 
-function getScores() {
-  const scores = {
-    known: state.answers.filter((answer) => answer === "known").length,
-    unknown: state.answers.filter((answer) => answer === "unknown").length,
-    bands: {}
-  };
-  Object.keys(BAND_META).forEach((band) => {
-    const indices = scanCards.map((card, index) => card.difficulty === band ? index : -1).filter((index) => index >= 0);
-    scores.bands[band] = {
-      total: indices.length,
-      known: indices.filter((index) => state.answers[index] === "known").length
-    };
-  });
-  return scores;
+function rankFor(score) {
+  if (score >= 90) return "LORE MASTER";
+  if (score >= 70) return "STRATEGIST";
+  if (score >= 45) return "NAVIGATOR";
+  return "SCOUT";
 }
 
 function renderResult() {
   const scores = getScores();
-  const [rank, message] = rankFor(scores.known);
-  $("result-known").textContent = String(scores.known);
-  $("result-known-count").textContent = String(scores.known);
-  $("result-unknown-count").textContent = String(scores.unknown);
-  $("result-beginner").textContent = `${scores.bands.beginner.known} / ${scores.bands.beginner.total}`;
-  $("result-intermediate").textContent = `${scores.bands.intermediate.known} / ${scores.bands.intermediate.total}`;
-  $("result-advanced").textContent = `${scores.bands.advanced.known} / ${scores.bands.advanced.total}`;
-  $("result-rank").textContent = `SELF-REPORT: ${rank}`;
-  $("result-message").textContent = message;
+  $("result-score").textContent = String(scores.score);
+  $("result-rank").textContent = rankFor(scores.score);
   showScreen("screen-result");
 }
 
 function buildNetworkQueue() {
+  const knownCards = scanCards.filter((_, index) => state.answers[index] === "known");
   const queue = [];
   Object.entries(BAND_META).forEach(([band, meta]) => {
-    const candidates = scanCards
-      .map((card, index) => ({ card, index, known: state.answers[index] === "known" }))
-      .filter((item) => item.card.difficulty === band && item.known)
-      .sort((a, b) => Number(b.known) - Number(a.known) || a.card.order - b.card.order);
-    queue.push(...candidates.slice(0, meta.quota).map((item) => item.card));
+    queue.push(...knownCards.filter((card) => card.difficulty === band).slice(0, meta.quota));
+  });
+  knownCards.forEach((card) => {
+    if (queue.length < NETWORK_LIMIT && !queue.includes(card)) queue.push(card);
   });
   return queue.slice(0, NETWORK_LIMIT);
 }
@@ -194,122 +175,69 @@ function startNetworks() {
   renderNetwork();
 }
 
-function relationComparison(card, side) {
-  const related = card[side];
-  const key = networkLinkKey(card.english, related.english);
-  const override = RELATION_COPY_OVERRIDES[key];
-  return override || {
-    mainMeaning: card.context,
-    relatedMeaning: related.relation,
-    connection: `${card.katakana}から見た関係：${related.relation}`
-  };
-}
-
 function renderNetwork() {
   const card = state.networkQueue[state.networkIndex];
-  const meta = bandMeta(card);
-  state.selectedSide = null;
+  state.selectedSide = state.networkChoices[state.networkIndex];
   state.canAdvanceNetwork = false;
-  $("network-step").textContent = `${state.networkIndex + 1} / ${state.networkQueue.length}`;
-  $("network-title").textContent = `${card.katakana}から広げる`;
-  $("network-depth").textContent = card.platformLabel ? `${meta.label} · ${card.platformLabel}` : meta.label;
-  $("network-depth").className = `depth-chip ${meta.className}`;
+  $("screen-network").classList.remove("is-ready");
+  $("network-tap-next").hidden = true;
+  $("network-step").textContent = `${state.networkIndex + 1}/${state.networkQueue.length}`;
+  $("network-title").textContent = card.katakana;
   $("network-core-katakana").textContent = card.katakana;
   $("network-core-english").textContent = card.english.toLowerCase();
-  $("network-core-copy").textContent = relationComparison(card, "left").mainMeaning;
-  $("connection-label").textContent = "ガイドのメモ";
-  $("connection-title").textContent = "2つの説明をくらべて選ぼう";
-  $("connection-copy").textContent = "正解・不正解はありません。気になるつながりを選びます。";
-  $("connection-comparison").hidden = true;
-  $("network-link-layer").replaceChildren();
-  $("network-next").disabled = true;
-  $("network-next").querySelector("span").textContent = state.networkIndex === state.networkQueue.length - 1 ? "結果を見る" : "次のマップ";
 
-  const nodes = $("network-nodes");
-  nodes.replaceChildren();
-  let lockedCount = 0;
+  const container = $("network-nodes");
+  container.replaceChildren();
+  let openChoices = 0;
   ["left", "right"].forEach((side) => {
     const related = card[side];
-    const comparison = relationComparison(card, side);
     const existingLink = getNetworkLink(card, side);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `network-node network-node-${side}`;
+    button.className = "network-node";
     button.dataset.side = side;
     button.dataset.testid = `network-${side}`;
-    button.setAttribute("aria-pressed", "false");
+    button.innerHTML = `<strong></strong><span></span>`;
+    button.querySelector("strong").textContent = related.katakana;
+    button.querySelector("span").textContent = related.english.toLowerCase();
+    button.setAttribute("aria-label", `${related.katakana}、${related.relation}`);
     if (existingLink) {
-      lockedCount += 1;
       button.disabled = true;
       button.classList.add("is-locked");
-      button.dataset.linked = "true";
-      button.setAttribute("aria-label", `${related.katakana} ${related.english}、${comparison.relatedMeaning}、接続済み`);
     } else {
-      button.setAttribute("aria-label", `${related.katakana} ${related.english}、${comparison.relatedMeaning}`);
+      openChoices += 1;
     }
-    const direction = document.createElement("span");
-    direction.className = "node-direction";
-    direction.textContent = side === "left" ? "← LEFT" : "RIGHT →";
-    const katakana = document.createElement("strong");
-    katakana.textContent = related.katakana;
-    const english = document.createElement("small");
-    english.textContent = related.english.toLowerCase();
-    const explanation = document.createElement("p");
-    explanation.className = "node-explanation";
-    explanation.textContent = comparison.relatedMeaning;
-    button.append(direction, katakana, english, explanation);
-    if (existingLink) {
-      const linked = document.createElement("span");
-      linked.className = "node-linked";
-      linked.textContent = "接続済み";
-      button.append(linked);
-    }
-    nodes.append(button);
+    container.append(button);
   });
-  if (lockedCount === 1) {
-    $("connection-label").textContent = "接続済みの枝があります";
-    $("connection-title").textContent = "接続済みの枝は選べません";
-    $("connection-copy").textContent = "もう一方の関連語を選んで、ネットワークを広げてください。";
-  } else if (lockedCount === 2) {
-    state.canAdvanceNetwork = true;
-    $("network-next").disabled = false;
-    $("connection-label").textContent = "2本とも接続済み";
-    $("connection-title").textContent = "2本とも接続済みです";
-    $("connection-copy").textContent = "この語のネットワークはすでに作られています。";
-  }
+
+  if (openChoices === 0) setNetworkReady();
   window.requestAnimationFrame(() => renderNetworkLinks());
 }
 
 function selectNetworkSide(side, button) {
-  if (!["left", "right"].includes(side) || button.disabled) return;
+  if (state.canAdvanceNetwork || !["left", "right"].includes(side) || button.disabled) return;
   const card = state.networkQueue[state.networkIndex];
   const related = card[side];
-  const comparison = relationComparison(card, side);
   state.selectedSide = side;
-  state.canAdvanceNetwork = true;
   state.networkChoices[state.networkIndex] = side;
   state.networkLinks.set(networkLinkKey(card.english, related.english), {
-    main: card.english.toLowerCase(),
-    related: related.english.toLowerCase(),
+    first: card.english,
+    second: related.english,
     relation: related.relation
   });
-  document.querySelectorAll(".network-node").forEach((item) => {
-    const selected = item === button;
-    item.classList.toggle("is-selected", selected);
-    item.setAttribute("aria-pressed", String(selected));
+  $("network-nodes").querySelectorAll(".network-node").forEach((node) => {
+    node.disabled = true;
+    if (node === button) node.classList.add("is-selected");
+    else if (!node.classList.contains("is-locked")) node.classList.add("is-muted");
   });
-  button.disabled = true;
-  $("connection-label").textContent = "つながりを発見";
-  $("connection-title").textContent = `${card.katakana} と ${related.katakana}`;
-  $("connection-copy").textContent = related.relation;
-  $("comparison-main-word").textContent = `${card.katakana} / ${card.english.toLowerCase()}`;
-  $("comparison-main-copy").textContent = comparison.mainMeaning;
-  $("comparison-related-word").textContent = `${related.katakana} / ${related.english.toLowerCase()}`;
-  $("comparison-related-copy").textContent = comparison.relatedMeaning;
-  $("comparison-relation").textContent = comparison.connection;
-  $("connection-comparison").hidden = false;
-  $("network-next").disabled = false;
+  setNetworkReady();
   renderNetworkLinks(side);
+}
+
+function setNetworkReady() {
+  state.canAdvanceNetwork = true;
+  $("screen-network").classList.add("is-ready");
+  $("network-tap-next").hidden = false;
 }
 
 function networkLinkKey(first, second) {
@@ -321,49 +249,52 @@ function getNetworkLink(card, side) {
 }
 
 function renderNetworkLinks(animateSide = null) {
-  const card = state.networkQueue[state.networkIndex];
+  const stage = document.querySelector(".network-stage");
   const layer = $("network-link-layer");
+  if (!stage || !layer || $("screen-network").hidden) return;
   layer.replaceChildren();
+  const card = state.networkQueue[state.networkIndex];
   ["left", "right"].forEach((side) => {
     const link = getNetworkLink(card, side);
-    const button = document.querySelector(`.network-node[data-side="${side}"]`);
-    if (link && button) renderNetworkLink(button, link.relation, side, side === animateSide);
+    const button = containerButton(side);
+    if (link && button) renderNetworkLink(stage, layer, button, link.relation, side === animateSide);
   });
 }
 
-function renderNetworkLink(button, relationText, side, animate = false) {
-  const stage = document.querySelector(".network-stage");
-  const core = $("network-core");
-  const layer = $("network-link-layer");
-  if (!stage || !core || !button || !relationText) return;
+function containerButton(side) {
+  return $("network-nodes").querySelector(`[data-side="${side}"]`);
+}
+
+function renderNetworkLink(stage, layer, button, relationText, animate) {
   const stageRect = stage.getBoundingClientRect();
-  const coreRect = core.getBoundingClientRect();
+  const coreRect = $("network-core").getBoundingClientRect();
   const nodeRect = button.getBoundingClientRect();
   const startX = coreRect.left + coreRect.width / 2 - stageRect.left;
-  const startY = coreRect.top + coreRect.height / 2 - stageRect.top;
+  const startY = coreRect.bottom - stageRect.top;
   const endX = nodeRect.left + nodeRect.width / 2 - stageRect.left;
-  const endY = nodeRect.top + nodeRect.height / 2 - stageRect.top;
-  const deltaX = endX - startX;
-  const deltaY = endY - startY;
-  const length = Math.hypot(deltaX, deltaY);
-  const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
-  const beam = document.createElement("div");
-  beam.className = `network-link-beam${animate ? " is-animated" : " is-visible"}`;
-  beam.dataset.side = side;
+  const endY = nodeRect.top - stageRect.top;
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const length = Math.hypot(dx, dy);
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+  const beam = document.createElement("span");
+  beam.className = `network-link-beam${animate ? " is-animate" : ""}`;
   beam.style.left = `${startX}px`;
   beam.style.top = `${startY}px`;
   beam.style.width = `${length}px`;
-  beam.style.setProperty("--link-angle", `${angle}deg`);
-  const spark = document.createElement("span");
-  spark.className = "network-link-spark";
-  beam.append(spark);
-  const relation = document.createElement("span");
-  relation.className = `network-link-relation${animate ? " is-animated" : " is-visible"}`;
-  relation.dataset.side = side;
-  relation.textContent = relationText;
-  relation.style.left = `${startX + deltaX * .5}px`;
-  relation.style.top = `${startY + deltaY * .5 - 25}px`;
-  layer.append(beam, relation);
+  beam.style.transform = `rotate(${angle}deg)`;
+  layer.append(beam);
+
+  const label = document.createElement("span");
+  label.className = `network-link-relation${animate ? " is-animate" : ""}`;
+  label.textContent = relationText;
+  const labelWidth = 170;
+  const middleX = (startX + endX) / 2;
+  const middleY = (startY + endY) / 2;
+  label.style.left = `${Math.max(8, Math.min(stageRect.width - labelWidth - 8, middleX - labelWidth / 2))}px`;
+  label.style.top = `${middleY - 18}px`;
+  layer.append(label);
 }
 
 function nextNetwork() {
@@ -371,68 +302,71 @@ function nextNetwork() {
   if (state.networkIndex < state.networkQueue.length - 1) {
     state.networkIndex += 1;
     renderNetwork();
-    return;
+  } else {
+    renderFinal();
   }
-  renderFinal();
 }
 
 function renderFinal() {
   const scores = getScores();
-  const connected = state.networkLinks.size;
-  $("final-summary-text").textContent = `100語中${scores.known}語を「知ってる」と回答`;
-  $("final-summary-detail").textContent = `${connected}語から左右の知識ルートを選択。結果は端末内だけで処理し、送信していません。`;
+  $("final-score").textContent = String(scores.score);
+  $("final-rank").textContent = rankFor(scores.score);
   showScreen("screen-final");
 }
 
 function resetDragVisuals() {
-  state.drag = null;
-  $("scan-card").classList.remove("is-dragging");
-  $("scan-card").style.setProperty("--drag-x", "0px");
-  $("scan-card").style.setProperty("--drag-rotation", "0deg");
+  const card = $("scan-card");
+  card.classList.remove("is-dragging");
+  card.style.setProperty("--drag-x", "0px");
+  card.style.setProperty("--drag-rotation", "0deg");
   $("swipe-stamp-known").style.opacity = "0";
   $("swipe-stamp-unknown").style.opacity = "0";
 }
 
 function onPointerDown(event) {
   if (state.isAnimating || event.button > 0) return;
-  state.drag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, deltaX: 0 };
-  $("scan-card").setPointerCapture?.(event.pointerId);
+  state.drag = { pointerId: event.pointerId, startX: event.clientX, currentX: event.clientX };
   $("scan-card").classList.add("is-dragging");
+  $("scan-card").setPointerCapture?.(event.pointerId);
 }
 
 function onPointerMove(event) {
   if (!state.drag || state.drag.pointerId !== event.pointerId) return;
-  const deltaX = event.clientX - state.drag.startX;
-  const deltaY = event.clientY - state.drag.startY;
-  state.drag.deltaX = deltaX;
-  if (Math.abs(deltaX) > Math.abs(deltaY)) event.preventDefault();
-  $("scan-card").style.setProperty("--drag-x", `${deltaX}px`);
-  $("scan-card").style.setProperty("--drag-rotation", `${Math.max(-12, Math.min(12, deltaX / 22))}deg`);
-  $("swipe-stamp-known").style.opacity = String(Math.min(1, Math.max(0, deltaX / 100)));
-  $("swipe-stamp-unknown").style.opacity = String(Math.min(1, Math.max(0, -deltaX / 100)));
+  state.drag.currentX = event.clientX;
+  const delta = event.clientX - state.drag.startX;
+  const intensity = Math.min(Math.abs(delta) / 110, 1);
+  $("scan-card").style.setProperty("--drag-x", `${delta}px`);
+  $("scan-card").style.setProperty("--drag-rotation", `${delta / 18}deg`);
+  $("swipe-stamp-known").style.opacity = delta > 0 ? String(intensity) : "0";
+  $("swipe-stamp-unknown").style.opacity = delta < 0 ? String(intensity) : "0";
 }
 
 function onPointerEnd(event) {
   if (!state.drag || state.drag.pointerId !== event.pointerId) return;
-  const deltaX = state.drag.deltaX;
-  const threshold = Math.min(120, Math.max(72, $("scan-card").clientWidth * .22));
+  const delta = state.drag.currentX - state.drag.startX;
   state.drag = null;
-  if (Math.abs(deltaX) >= threshold) {
-    answerCard(deltaX > 0 ? "known" : "unknown");
-  } else {
-    resetDragVisuals();
-  }
+  if (Math.abs(delta) >= 88) answerCard(delta > 0 ? "known" : "unknown");
+  else resetDragVisuals();
 }
 
-const scanCardElement = $("scan-card");
-scanCardElement.addEventListener("pointerdown", onPointerDown);
-scanCardElement.addEventListener("pointermove", onPointerMove);
-scanCardElement.addEventListener("pointerup", onPointerEnd);
-scanCardElement.addEventListener("pointercancel", resetDragVisuals);
+function initializeProgressPips() {
+  const fragment = document.createDocumentFragment();
+  for (let index = 0; index < 10; index += 1) fragment.append(document.createElement("i"));
+  $("progress-pips").append(fragment);
+}
 
-window.addEventListener("resize", () => {
-  if ($("screen-network").hidden) return;
-  renderNetworkLinks();
+$("scan-card").addEventListener("pointerdown", onPointerDown);
+$("scan-card").addEventListener("pointermove", onPointerMove);
+$("scan-card").addEventListener("pointerup", onPointerEnd);
+$("scan-card").addEventListener("pointercancel", onPointerEnd);
+
+$("screen-network").addEventListener("click", (event) => {
+  const node = event.target.closest(".network-node");
+  if (node) {
+    selectNetworkSide(node.dataset.side, node);
+    return;
+  }
+  if (state.canAdvanceNetwork) nextNetwork();
 });
 
 document.addEventListener("click", (event) => {
@@ -441,19 +375,12 @@ document.addEventListener("click", (event) => {
     answerCard(answer.dataset.answer);
     return;
   }
-  const node = event.target.closest(".network-node");
-  if (node) {
-    selectNetworkSide(node.dataset.side, node);
-    return;
-  }
   const actionTarget = event.target.closest("[data-action]");
   if (!actionTarget) return;
-  event.preventDefault();
   const actions = {
     start: startScan,
-    "start-networks": startNetworks,
-    "next-network": nextNetwork,
     undo: undoAnswer,
+    "start-networks": startNetworks,
     restart: startScan,
     home: () => { resetState(); showScreen("screen-home"); }
   };
@@ -461,15 +388,25 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (!$("screen-scan").hidden && !state.isAnimating && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
-    event.preventDefault();
-    answerCard(event.key === "ArrowRight" ? "known" : "unknown");
+  if (!$("screen-scan").hidden && !state.isAnimating) {
+    if (event.key === "ArrowLeft") answerCard("unknown");
+    if (event.key === "ArrowRight") answerCard("known");
     return;
   }
-  if (!$("screen-network").hidden && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
-    event.preventDefault();
-    const side = event.key === "ArrowLeft" ? "left" : "right";
-    const button = document.querySelector(`.network-node[data-side="${side}"]`);
-    if (button) selectNetworkSide(side, button);
+  if (!$("screen-network").hidden) {
+    if (state.canAdvanceNetwork && ["Enter", " ", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+      event.preventDefault();
+      nextNetwork();
+      return;
+    }
+    const side = event.key === "ArrowLeft" ? "left" : event.key === "ArrowRight" ? "right" : null;
+    if (side) selectNetworkSide(side, containerButton(side));
   }
 });
+
+window.addEventListener("resize", () => {
+  if (!$("screen-network").hidden) window.requestAnimationFrame(() => renderNetworkLinks());
+});
+
+initializeProgressPips();
+showScreen("screen-home");
