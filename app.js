@@ -2,6 +2,10 @@
 
 const TOTAL_CARDS = 100;
 const NETWORK_LIMIT = 10;
+const DEFAULT_ANSWER_REVEAL_MS = 1000;
+const ANSWER_REVEAL_MS = Number.isFinite(window.__KQ_TEST_REVEAL_MS)
+  ? Math.max(80, Number(window.__KQ_TEST_REVEAL_MS))
+  : DEFAULT_ANSWER_REVEAL_MS;
 const BAND_META = Object.freeze({
   beginner: { quota: 4, weight: 1 },
   intermediate: { quota: 3, weight: 2 },
@@ -24,12 +28,55 @@ const state = {
   selectedSide: null,
   canAdvanceNetwork: false,
   isAnimating: false,
+  soundEnabled: true,
+  answerTimer: null,
   drag: null,
   routeDrag: null
 };
 
 function activeCards() {
   return state.route === "sega" ? segaCards : otherCards;
+}
+
+function cancelSpeech() {
+  try { window.speechSynthesis?.cancel(); } catch {}
+}
+
+function speakText(text, lang, rate = 0.86, pitch = 1) {
+  if (!state.soundEnabled || !text || !("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
+  try {
+    cancelSpeech();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    const languageRoot = lang.toLowerCase().split("-")[0];
+    const voice = window.speechSynthesis.getVoices?.().find((item) => item.lang?.toLowerCase().startsWith(languageRoot));
+    if (voice) utterance.voice = voice;
+    window.speechSynthesis.speak(utterance);
+  } catch {}
+}
+
+function speakEnglish(text) {
+  speakText(text, "en-US", 0.82, 1);
+}
+
+function speakAnswerFeedback(answer) {
+  speakText(answer === "known" ? "セーガー" : "ガーセー", "ja-JP", 0.78, answer === "known" ? 1.08 : 0.9);
+}
+
+function updateSoundToggle() {
+  const button = $("sound-toggle");
+  button.textContent = state.soundEnabled ? "🔊" : "🔇";
+  button.setAttribute("aria-pressed", String(state.soundEnabled));
+  button.setAttribute("aria-label", state.soundEnabled ? "音声をオフにする" : "音声をオンにする");
+}
+
+function toggleSound() {
+  state.soundEnabled = !state.soundEnabled;
+  updateSoundToggle();
+  cancelSpeech();
+  if (state.soundEnabled && !$("screen-scan").hidden && !state.isAnimating) speakEnglish(activeCards()[state.cardIndex].english);
 }
 
 function showScreen(id) {
@@ -42,6 +89,9 @@ function showScreen(id) {
 }
 
 function resetState() {
+  if (state.answerTimer) window.clearTimeout(state.answerTimer);
+  state.answerTimer = null;
+  cancelSpeech();
   state.cardIndex = 0;
   state.answers = Array(TOTAL_CARDS).fill(null);
   state.networkQueue = [];
@@ -105,9 +155,15 @@ function renderProgress() {
 function renderCard() {
   const card = activeCards()[state.cardIndex];
   clearSwipeVisuals();
+  $("screen-scan").classList.remove("is-revealing");
+  $("scan-card").classList.remove("is-answer-known", "is-answer-unknown");
+  document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = false; });
   $("scan-current").textContent = String(state.cardIndex + 1).padStart(2, "0");
   $("card-katakana").textContent = card.titleDisplay || card.katakana;
   $("card-english").textContent = card.english.toLowerCase();
+  const answer = $("card-answer");
+  answer.hidden = true;
+  answer.textContent = "";
   const badge = $("card-badge");
   badge.hidden = !card.platformLabel;
   badge.textContent = card.platformLabel || "";
@@ -130,17 +186,26 @@ function renderCard() {
   renderProgress();
   state.isAnimating = false;
   state.drag = null;
+  speakEnglish(card.english);
 }
 
 function answerCard(answer) {
   if (state.isAnimating || !["known", "unknown"].includes(answer)) return;
   state.isAnimating = true;
   state.answers[state.cardIndex] = answer;
+  const cardData = activeCards()[state.cardIndex];
   const card = $("scan-card");
   const isKnown = answer === "known";
-  card.classList.add(isKnown ? "is-exit-right" : "is-exit-left");
+  clearSwipeVisuals();
+  card.classList.add(isKnown ? "is-answer-known" : "is-answer-unknown");
   $(isKnown ? "swipe-stamp-known" : "swipe-stamp-unknown").style.opacity = "1";
-  window.setTimeout(() => {
+  $("card-answer").textContent = cardData.answerJa;
+  $("card-answer").hidden = false;
+  $("screen-scan").classList.add("is-revealing");
+  document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = true; });
+  speakAnswerFeedback(answer);
+  state.answerTimer = window.setTimeout(() => {
+    state.answerTimer = null;
     if (state.cardIndex < TOTAL_CARDS - 1) {
       state.cardIndex += 1;
       renderCard();
@@ -148,7 +213,7 @@ function answerCard(answer) {
       state.isAnimating = false;
       renderResult();
     }
-  }, 180);
+  }, ANSWER_REVEAL_MS);
 }
 
 function undoAnswer() {
@@ -193,12 +258,30 @@ function renderResult() {
 
 function buildNetworkQueue() {
   const knownCards = activeCards().filter((_, index) => state.answers[index] === "known");
-  const queue = [];
+  const parentQueue = [];
   Object.entries(BAND_META).forEach(([band, meta]) => {
-    queue.push(...knownCards.filter((card) => card.difficulty === band).slice(0, meta.quota));
+    parentQueue.push(...knownCards.filter((card) => card.difficulty === band).slice(0, meta.quota));
   });
   knownCards.forEach((card) => {
-    if (queue.length < NETWORK_LIMIT && !queue.includes(card)) queue.push(card);
+    if (parentQueue.length < NETWORK_LIMIT && !parentQueue.includes(card)) parentQueue.push(card);
+  });
+  const queue = [];
+  parentQueue.forEach((card) => {
+    const terms = Array.isArray(card.networkTerms) && card.networkTerms.length > 0 ? card.networkTerms : [card];
+    terms.forEach((term, index) => {
+      if (queue.length >= NETWORK_LIMIT) return;
+      queue.push(terms.length === 1 ? card : {
+        ...card,
+        entryId: `${card.entryId}-W${index + 1}`,
+        questionId: `${card.questionId}-W${index + 1}`,
+        katakana: term.katakana,
+        english: term.english,
+        sourceTitle: term.sourceTitle || card.sourceTitle,
+        left: term.left,
+        right: term.right,
+        networkTerms: []
+      });
+    });
   });
   return queue.slice(0, NETWORK_LIMIT);
 }
@@ -226,6 +309,8 @@ function renderNetwork() {
   $("network-tap-next").hidden = true;
   $("network-step").textContent = `${state.networkIndex + 1}/${state.networkQueue.length}`;
   $("network-title").textContent = card.katakana;
+  $("network-source-title").textContent = card.sourceTitle ? `${card.sourceTitle} から` : "";
+  $("network-source-title").hidden = !card.sourceTitle;
   $("network-core-katakana").textContent = card.katakana;
   $("network-core-english").textContent = card.english.toLowerCase();
 
@@ -462,6 +547,7 @@ document.addEventListener("click", (event) => {
   if (!actionTarget) return;
   const actions = {
     undo: undoAnswer,
+    "toggle-sound": toggleSound,
     "start-networks": startNetworks,
     restart: startScan,
     home: () => {
@@ -502,5 +588,6 @@ window.addEventListener("resize", () => {
 });
 
 initializeProgressPips();
+updateSoundToggle();
 setRouteVisuals();
 showScreen("screen-home");

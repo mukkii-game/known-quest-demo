@@ -13,7 +13,10 @@
 <body>
   <header class="topbar">
     <button class="brand" type="button" data-action="home" aria-label="KNOWN QUEST ホーム">KQ</button>
-    <span class="test-chip">M0 PUBLIC TEST</span>
+    <div class="top-actions">
+      <button id="sound-toggle" class="sound-toggle" type="button" data-action="toggle-sound" data-testid="sound-toggle" aria-label="音声をオフにする" aria-pressed="true">🔊</button>
+      <span class="test-chip">M0 PUBLIC TEST</span>
+    </div>
   </header>
 
   <main id="app" class="app-shell">
@@ -46,6 +49,7 @@
             <div id="card-badge" class="card-badge" hidden>SEGA MANIA</div>
             <div id="card-katakana" class="card-katakana">セーブ</div>
             <div id="card-english" class="card-english">save</div>
+            <div id="card-answer" class="card-answer" aria-live="polite" hidden></div>
             <div id="card-compare" class="card-compare" hidden></div>
           </div>
         </article>
@@ -72,6 +76,7 @@
         <img data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
       </div>
       <h2 id="network-title">セーブ</h2>
+      <div id="network-source-title" class="network-source-title" hidden></div>
 
       <div class="network-stage">
         <div id="network-link-layer" class="network-link-layer" aria-hidden="true"></div>
