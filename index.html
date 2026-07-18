@@ -21,29 +21,25 @@
 
   <main id="app" class="app-shell">
     <section id="screen-home" class="screen is-active" aria-labelledby="home-title">
-      <div id="route-card" class="route-card" data-testid="route-card">
-        <div class="route-mascots" aria-hidden="true">
-          <img src="sega-guide-avatar.png" alt="">
-          <img src="guide-avatar-v2.png" alt="">
-        </div>
+      <div class="route-card">
         <h1 id="home-title">ゲーマーワードクエスト<br><span>おまえはすでに知っている！</span></h1>
         <p class="vocabulary-power">
           いまのあなたの語彙パワー：<strong id="title-vocab-count">0</strong>語
         </p>
       </div>
 
-      <div class="route-actions" role="group" aria-label="ゲーム英語ルートを左右から選択">
-        <button class="route-button route-sega" type="button" data-route="sega" data-testid="route-sega"><span aria-hidden="true">←</span> セガ派</button>
-        <button class="route-button route-other" type="button" data-route="other" data-testid="route-other">その他派 <span aria-hidden="true">→</span></button>
+      <div class="route-actions" role="group" aria-label="好きなゲーム陣営を選択">
+        <button class="route-button route-sega" type="button" data-route="sega" data-testid="route-sega"><span class="mascot" data-mode="sega" aria-hidden="true"></span><b>セガ派</b></button>
+        <button class="route-button route-nintendo" type="button" data-route="nintendo" data-testid="route-nintendo"><span class="mascot" data-mode="nintendo" aria-hidden="true"></span><b>任天堂派</b></button>
+        <button class="route-button route-sony" type="button" data-route="sony" data-testid="route-sony"><span class="mascot" data-mode="sony" aria-hidden="true"></span><b>ソニー派</b></button>
+        <button class="route-button route-xbox" type="button" data-route="xbox" data-testid="route-xbox"><span class="mascot" data-mode="xbox" aria-hidden="true"></span><b>MS／Xbox派</b></button>
       </div>
 
       <button id="history-open" class="history-button" type="button" data-action="open-history" data-testid="open-history">
         これまでの単語を見る
       </button>
 
-      <p class="home-note">
-        現在の試作で遊べるのは セガ派 / その他派 です。記録はブラウザに保存されます。
-      </p>
+      <p class="home-note">好きな陣営のタイトルで、知っていた英語を発掘しよう。</p>
     </section>
 
     <section id="screen-scan" class="screen" aria-labelledby="scan-title" hidden>
@@ -71,16 +67,20 @@
         <button id="answer-unknown" type="button" class="answer-button answer-unknown" data-answer="unknown" data-testid="answer-unknown"><span aria-hidden="true">←</span> 知らない</button>
         <button id="answer-known" type="button" class="answer-button answer-known" data-answer="known" data-testid="answer-known">知ってる <span aria-hidden="true">→</span></button>
       </div>
-      <button id="undo-answer" class="undo-button" type="button" data-action="undo" data-testid="undo-answer" aria-label="ひとつ前へ戻る" disabled>↶</button>
     </section>
 
     <section id="screen-result" class="screen result-screen" aria-labelledby="result-title" hidden>
       <div class="result-stage">
         <div class="result-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        <img class="result-mascot" data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
+        <span class="mascot result-mascot" data-route-avatar data-mode="sega" role="img" aria-label="オリジナル仮マスコット"></span>
         <h2 id="result-title">GAME ENGLISH</h2>
         <div class="score"><strong id="result-score">0</strong><span>/100</span></div>
         <div id="result-rank" class="rank-label" aria-live="polite">ゲーム好き</div>
+        <div class="result-summary" aria-label="今回の結果">
+          <div><strong id="result-correct-count">0</strong><span>知っていた</span></div>
+          <div><strong id="result-new-count">0</strong><span>新しく習得</span></div>
+          <div><strong id="result-vocab-count">0</strong><span>累計パワー</span></div>
+        </div>
         <div class="result-lists" aria-label="今回の出題単語一覧">
           <section class="result-list-block">
             <h3>もう知っている単語 <span id="result-known-count">0</span>語</h3>
@@ -101,7 +101,7 @@
     <section id="screen-network" class="screen network-screen" aria-labelledby="network-title" hidden>
       <div class="network-head">
         <strong id="network-step">1/10</strong>
-        <img data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
+        <span class="mascot network-mascot" data-route-avatar data-mode="sega" role="img" aria-label="オリジナル仮マスコット"></span>
       </div>
       <h2 id="network-title">セーブ</h2>
       <div id="network-source-title" class="network-source-title" hidden></div>
@@ -133,7 +133,7 @@
     <section id="screen-final" class="screen result-screen" aria-labelledby="final-title" hidden>
       <div class="result-stage">
         <div class="result-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        <img class="result-mascot" data-route-avatar src="guide-avatar-v2.png" alt="AI生成の仮ガイドキャラクター">
+        <span class="mascot result-mascot" data-route-avatar data-mode="sega" role="img" aria-label="オリジナル仮マスコット"></span>
         <h2 id="final-title">GAME ENGLISH</h2>
         <div class="score"><strong id="final-score">0</strong><span>/100</span></div>
         <div id="final-rank" class="rank-label" aria-live="polite">ゲーム好き</div>
@@ -185,7 +185,7 @@
   </main>
 
   <footer class="footer-note">
-    <span>送信なし</span><span>AI仮データ / Human未承認</span>
+    <span>端末内保存・送信なし</span><span>AI仮データ / Human未承認</span>
     <span class="visually-hidden">NO DATA UPLOAD</span>
     <span class="visually-hidden">意見収集用・正式教材ではありません</span>
     <span class="visually-hidden">教材・権利ともAIドラフト／Human未承認</span>

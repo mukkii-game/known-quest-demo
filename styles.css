@@ -45,6 +45,24 @@ body[data-route="sega"] {
     #e9f4ff;
 }
 
+body[data-route="nintendo"] {
+  --lavender: #ffd9d4;
+  --violet: #c94949;
+  background: radial-gradient(circle at 14% 11%, #ffe0d9 0 15%, transparent 35%), radial-gradient(circle at 88% 78%, #fff0a8 0 13%, transparent 31%), #fff1e8;
+}
+
+body[data-route="sony"] {
+  --lavender: #dce9ff;
+  --violet: #435f9f;
+  background: radial-gradient(circle at 14% 11%, #e3edff 0 15%, transparent 35%), radial-gradient(circle at 88% 78%, #f1e4ff 0 13%, transparent 31%), #f4f6ff;
+}
+
+body[data-route="xbox"] {
+  --lavender: #d7f0d4;
+  --violet: #3f7d48;
+  background: radial-gradient(circle at 14% 11%, #dcf5d8 0 15%, transparent 35%), radial-gradient(circle at 88% 78%, #d8efff 0 13%, transparent 31%), #edf8ec;
+}
+
 button { font: inherit; }
 button:focus-visible { outline: 4px solid #ffbd59; outline-offset: 3px; }
 
@@ -147,8 +165,6 @@ button:focus-visible { outline: 4px solid #ffbd59; outline-offset: 3px; }
 .result-mascot {
   width: 104px;
   height: 104px;
-  object-fit: cover;
-  border-radius: 34px;
   transform: rotate(-3deg);
   box-shadow: 0 12px 30px rgba(114, 86, 184, .15);
 }
@@ -180,6 +196,10 @@ body[data-route="sega"] .result-stage {
     linear-gradient(145deg, #fff 0 57%, #d9eeff 100%);
   box-shadow: 0 18px 0 #3a84c7, 0 32px 50px rgba(24, 76, 132, .2);
 }
+
+body[data-route="nintendo"] .result-stage { border-color: #ee8b78; box-shadow: 0 18px 0 #c95e50, 0 32px 50px rgba(130, 54, 46, .18); }
+body[data-route="sony"] .result-stage { border-color: #9ab5e8; box-shadow: 0 18px 0 #5d79b4, 0 32px 50px rgba(48, 65, 110, .18); }
+body[data-route="xbox"] .result-stage { border-color: #83c987; box-shadow: 0 18px 0 #4f9857, 0 32px 50px rgba(43, 100, 51, .18); }
 
 .result-stage > :not(.result-burst) { position: relative; z-index: 2; }
 
@@ -234,20 +254,18 @@ h2,
 p { margin: 0; }
 
 h1 {
-  font-size: clamp(40px, 12vw, 58px);
-  line-height: .98;
+  font-size: clamp(28px, 7.8vw, 36px);
+  line-height: 1.08;
   letter-spacing: -.07em;
   font-weight: 950;
 }
 
-h1 span { color: var(--violet); }
+h1 span { color: var(--violet); font-size: clamp(24px, 6.7vw, 31px); }
 
 .route-card {
-  --route-x: 0px;
-  --route-rotation: 0deg;
   width: 100%;
-  min-height: 332px;
-  padding: 26px 18px 20px;
+  min-height: 196px;
+  padding: 22px 16px 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -261,32 +279,8 @@ h1 span { color: var(--violet); }
     radial-gradient(circle at 86% 84%, rgba(222, 210, 255, .9) 0 16%, transparent 17%),
     #fff;
   box-shadow: var(--shadow);
-  transform: translateX(var(--route-x)) rotate(var(--route-rotation));
-  touch-action: pan-y;
   user-select: none;
-  cursor: grab;
-  transition: transform .2s ease;
 }
-
-.route-card.is-dragging { cursor: grabbing; transition: none; }
-
-.route-mascots {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.route-mascots img {
-  width: 84px;
-  height: 84px;
-  object-fit: cover;
-  border-radius: 30px;
-  box-shadow: 0 10px 24px rgba(49, 41, 75, .12);
-}
-
-.route-mascots img:first-child { transform: rotate(-5deg); }
-.route-mascots img:last-child { transform: rotate(5deg); }
 
 .route-actions {
   width: 100%;
@@ -296,16 +290,67 @@ h1 span { color: var(--violet); }
 }
 
 .route-button {
-  min-height: 66px;
+  min-height: 94px;
+  padding: 8px 6px;
   border: 0;
   border-radius: 24px;
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: clamp(17px, 5vw, 20px);
   font-weight: 950;
   cursor: pointer;
 }
 
 .route-sega { color: #fff; background: #286bb2; }
-.route-other { color: #5b438f; background: #ded2ff; }
+.route-nintendo { color: #fff; background: #cf504b; }
+.route-sony { color: #334a7f; background: #e3ebff; }
+.route-xbox { color: #fff; background: #4d8e54; }
+
+.mascot {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-block;
+  width: 58px;
+  height: 58px;
+  border: 4px solid rgba(255, 255, 255, .88);
+  border-radius: 46% 54% 48% 52%;
+  background: #4b8ed3;
+  box-shadow: inset 0 -8px 0 rgba(0, 0, 0, .08), 0 6px 12px rgba(49, 41, 75, .16);
+}
+
+.mascot::before {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 21px;
+  width: 7px;
+  height: 8px;
+  border-radius: 50%;
+  background: #27304a;
+  box-shadow: 17px 0 #27304a;
+}
+
+.mascot::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  bottom: 10px;
+  width: 20px;
+  height: 7px;
+  border-bottom: 3px solid #27304a;
+  border-radius: 50%;
+}
+
+.mascot[data-mode="sega"] { background: #347fc8; clip-path: polygon(9% 31%, 0 9%, 25% 18%, 39% 0, 50% 18%, 72% 4%, 75% 24%, 100% 34%, 82% 49%, 91% 74%, 67% 72%, 50% 100%, 36% 78%, 8% 84%, 19% 58%); }
+.mascot[data-mode="nintendo"] { background: linear-gradient(#d94e48 0 28%, #f1b778 29% 100%); border-radius: 48% 48% 43% 43%; }
+.mascot[data-mode="nintendo"]::after { width: 24px; left: 15px; border-bottom-width: 4px; }
+.mascot[data-mode="sony"] { background: #fff; border-color: #bccbea; border-radius: 28% 28% 48% 48%; clip-path: polygon(6% 26%, 9% 0, 32% 20%, 68% 20%, 91% 0, 94% 27%, 100% 52%, 83% 91%, 50% 100%, 17% 91%, 0 52%); }
+.mascot[data-mode="xbox"] { background: linear-gradient(135deg, #5fb368, #2e6f43); border-radius: 28% 28% 44% 44%; }
+.mascot[data-mode="xbox"]::after { left: 11px; bottom: 7px; width: 28px; height: 14px; border: 3px solid #d9f3dd; border-top: 0; border-radius: 0 0 12px 12px; }
+
+.network-mascot { width: 46px; height: 46px; transform: scale(.82); }
 
 .home-pips {
   display: flex;
@@ -521,6 +566,23 @@ h1 span { color: var(--violet); }
   gap: 10px;
 }
 
+.result-summary {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.result-summary div {
+  padding: 9px 5px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .88);
+  box-shadow: inset 0 0 0 2px rgba(49, 41, 75, .08);
+}
+
+.result-summary strong { display: block; font-size: 25px; line-height: 1; }
+.result-summary span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; font-weight: 800; }
+
 .replay-stage {
   justify-content: center;
   align-items: center;
@@ -646,8 +708,12 @@ h1 span { color: var(--violet); }
 }
 
 .scan-card.is-title .card-katakana {
-  font-size: clamp(30px, 9vw, 43px);
-  line-height: 1.12;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  font-size: clamp(22px, 6.5vw, 36px);
+  line-height: 1.1;
 }
 
 .card-english {
@@ -660,7 +726,9 @@ h1 span { color: var(--violet); }
   overflow-wrap: anywhere;
 }
 
-.scan-card.is-title .card-english { font-size: clamp(27px, 8vw, 38px); }
+.scan-card.is-title .card-face { padding: 24px 16px; }
+.scan-card.is-title .card-english { margin-top: 16px; font-size: clamp(24px, 7vw, 34px); }
+.scan-card.is-title .card-answer { margin-top: 14px; }
 
 .card-answer {
   width: fit-content;
@@ -815,13 +883,7 @@ h1 span { color: var(--violet); }
 }
 
 .network-head strong { font-size: 28px; }
-.network-head img {
-  width: 50px;
-  height: 50px;
-  object-fit: cover;
-  border-radius: 18px;
-  transform: rotate(4deg);
-}
+.network-head .network-mascot { transform: rotate(4deg) scale(.78); }
 
 .network-screen > h2 {
   margin: 6px 0 4px;
@@ -1044,14 +1106,14 @@ h1 span { color: var(--violet); }
   .network-node { padding-inline: 7px; }
   .history-summary,
   .result-actions,
-  .replay-actions,
-  .route-actions,
-  .binary-actions { grid-template-columns: 1fr; }
+  .replay-actions { grid-template-columns: 1fr; }
   .history-button,
   .primary-button,
   .secondary-button,
-  .route-button,
   .answer-button { width: 100%; }
+  .route-button { min-height: 90px; }
+  .route-card { min-height: 184px; }
+  #screen-home { gap: 10px; }
   .network-comparison-row { grid-template-columns: 104px minmax(0, 1fr); padding-inline: 10px; }
   .network-comparison-row > b { font-size: 19px; }
   .footer-note { gap: 6px; font-size: 14px; }

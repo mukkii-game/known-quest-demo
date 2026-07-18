@@ -1,25 +1,33 @@
 "use strict";
 
-const OTHER_CARD_COUNT = 100;
-const SEGA_CARD_COUNT = 30;
-const OTHER_NETWORK_LIMIT = 10;
+const ROUTE_CARD_COUNT = 30;
+const NETWORK_LIMIT = 30;
 const DEFAULT_ANSWER_REVEAL_MS = 2000;
 const ANSWER_REVEAL_MS = Number.isFinite(window.__KQ_TEST_REVEAL_MS)
   ? Math.max(80, Number(window.__KQ_TEST_REVEAL_MS))
   : DEFAULT_ANSWER_REVEAL_MS;
 const STORAGE_VERSION = 1;
 const STORAGE_KEY = "known-quest-demo:v1";
+const ACTIVE_ROUTES = Object.freeze(["sega", "nintendo", "sony", "xbox"]);
 const STORAGE_MODE_KEYS = ["sega", "other", "nintendo", "sony", "xbox"];
 const MODE_LABELS = Object.freeze({
   sega: "セガ派",
-  other: "その他派",
+  other: "旧・その他派",
   nintendo: "任天堂派",
   sony: "ソニー派",
   xbox: "MS／Xbox派"
 });
 const BASE_ROUTE_LABELS = Object.freeze({
   sega: "SEGA ENGLISH",
-  other: "GAME ENGLISH"
+  nintendo: "NINTENDO ENGLISH",
+  sony: "PLAYSTATION ENGLISH",
+  xbox: "XBOX ENGLISH"
+});
+const ROUTE_RANK_LABELS = Object.freeze({
+  sega: "セガ",
+  nintendo: "任天堂",
+  sony: "ソニー",
+  xbox: "Xbox"
 });
 const BAND_META = Object.freeze({
   beginner: { quota: 4, weight: 1 },
@@ -27,8 +35,9 @@ const BAND_META = Object.freeze({
   advanced: { quota: 3, weight: 3 }
 });
 
-if (!Array.isArray(otherCards) || otherCards.length !== OTHER_CARD_COUNT || !Array.isArray(segaCards) || segaCards.length !== SEGA_CARD_COUNT) {
-  throw new Error("The game-English routes require 100 Other cards and 30 Sega title cards.");
+const ROUTE_CARDS = Object.freeze({ sega: segaCards, nintendo: nintendoCards, sony: sonyCards, xbox: xboxCards });
+if (ACTIVE_ROUTES.some((route) => !Array.isArray(ROUTE_CARDS[route]) || ROUTE_CARDS[route].length !== ROUTE_CARD_COUNT)) {
+  throw new Error("Each Gamer Word Quest route requires exactly 30 title cards.");
 }
 
 const $ = (id) => document.getElementById(id);
@@ -49,6 +58,7 @@ const state = {
   answerTimer: null,
   drag: null,
   routeDrag: null,
+  newlyKnownKeys: new Set(),
   progress: loadProgress()
 };
 let answerAudioContext = null;
@@ -62,7 +72,7 @@ function nowIso() {
 }
 
 function baseCardsForRoute(route) {
-  return route === "sega" ? segaCards : otherCards;
+  return ROUTE_CARDS[route] || [];
 }
 
 function activeCards() {
@@ -79,7 +89,7 @@ function routeLabel(route = state.route) {
 }
 
 function routeCardLabel(route = state.route) {
-  return BASE_ROUTE_LABELS[route] || "GAME ENGLISH";
+  return BASE_ROUTE_LABELS[route] || "GAMER ENGLISH";
 }
 
 function cardKey(card) {
@@ -333,6 +343,14 @@ function playAnswerFeedback(answer) {
   }
 }
 
+function playDecisionFeedback() {
+  playToneSequence([
+    { frequency: 392, offset: 0, duration: 0.1 },
+    { frequency: 523.25, offset: 0.075, duration: 0.12 },
+    { frequency: 659.25, offset: 0.15, duration: 0.18 }
+  ], 0.04);
+}
+
 function updateSoundToggle() {
   const button = $("sound-toggle");
   button.textContent = state.soundEnabled ? "🔊" : "🔇";
@@ -372,17 +390,17 @@ function resetState() {
   state.isAnimating = false;
   state.drag = null;
   state.routeDrag = null;
+  state.newlyKnownKeys = new Set();
 }
 
 function setRouteVisuals() {
   if (state.route) document.body.dataset.route = state.route;
   else document.body.removeAttribute("data-route");
-  const sega = state.route === "sega";
   document.querySelectorAll("[data-route-avatar]").forEach((avatar) => {
-    avatar.src = sega ? "sega-guide-avatar.png" : "guide-avatar-v2.png";
-    avatar.alt = sega ? "AI生成のセガ派用オリジナル仮ガイドキャラクター" : "AI生成の仮ガイドキャラクター";
+    avatar.dataset.mode = state.route || "sega";
+    avatar.setAttribute("aria-label", `${routeLabel(state.route)}のオリジナル仮マスコット`);
   });
-  const label = sega ? BASE_ROUTE_LABELS.sega : BASE_ROUTE_LABELS.other;
+  const label = routeCardLabel();
   $("result-title").textContent = label;
   $("final-title").textContent = label;
 }
@@ -394,7 +412,7 @@ function renderHistoryScreen() {
 }
 
 function chooseRoute(route) {
-  if (!["sega", "other"].includes(route)) return;
+  if (!ACTIVE_ROUTES.includes(route)) return;
   state.route = route;
   setRouteVisuals();
   if (state.progress.modePlays[route] > 0) {
@@ -407,7 +425,7 @@ function chooseRoute(route) {
 }
 
 function beginRoutePlay(route, skipKnown) {
-  if (!["sega", "other"].includes(route)) return;
+  if (!ACTIVE_ROUTES.includes(route)) return;
   state.route = route;
   setRouteVisuals();
   resetState();
@@ -427,11 +445,26 @@ function beginRoutePlay(route, skipKnown) {
 
 function filterCardsForRoute(route, skipKnown) {
   const cards = baseCardsForRoute(route);
-  if (!skipKnown) return cards.slice();
-  return cards.filter((card) => {
+  if (!skipKnown) return shuffled(cards);
+  const learning = [];
+  const unseen = [];
+  cards.forEach((card) => {
     const entry = state.progress.entries[cardKey(card)];
-    return !(entry && entry.status === "known");
+    if (entry?.status === "known") return;
+    if (entry?.seenCount > 0) learning.push(card);
+    else unseen.push(card);
   });
+  return [...shuffled(learning), ...shuffled(unseen)].slice(0, ROUTE_CARD_COUNT);
+}
+
+function shuffled(cards) {
+  const result = cards.slice();
+  if (window.__KQ_TEST_DISABLE_SHUFFLE) return result;
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
 }
 
 function startScan() {
@@ -480,8 +513,8 @@ function recordSeen(card) {
     modes: {}
   };
   existing.english = card.english.toLowerCase();
-  existing.meaningJa = card.meaningJa || card.answerJa || card.context || existing.meaningJa;
-  existing.sourceTitle = card.sourceTitle || card.titleDisplay || existing.sourceTitle;
+  existing.meaningJa ||= card.meaningJa || card.answerJa || card.context || "";
+  existing.sourceTitle ||= card.sourceTitle || card.titleDisplay || "";
   existing.firstMode ||= state.route || "";
   existing.firstQuestionId ||= card.questionId || "";
   existing.firstSeenAt ||= now;
@@ -500,8 +533,10 @@ function recordAnswer(card, answer) {
   if (!existing) return;
   existing.correctCount = Number(existing.correctCount) + (answer === "known" ? 1 : 0);
   existing.incorrectCount = Number(existing.incorrectCount) + (answer === "unknown" ? 1 : 0);
+  const wasKnown = existing.status === "known";
   if (answer === "known") {
     existing.status = "known";
+    if (!wasKnown) state.newlyKnownKeys.add(key);
   } else if (existing.status !== "known") {
     existing.status = "unknown";
   }
@@ -542,10 +577,9 @@ function renderCard() {
   });
   compare.hidden = comparisons.length === 0;
   $("scan-card").dataset.difficulty = card.difficulty;
-  $("scan-card").classList.toggle("is-title", ["game_title", "sega_title", "sega_language_gap"].includes(card.hookType));
+  $("scan-card").classList.toggle("is-title", card.hookType === "sega_language_gap" || String(card.hookType).endsWith("_title"));
   $("scan-card").classList.toggle("is-house-term", card.hookType === "sega_house_term");
   $("scan-card").setAttribute("aria-label", `${card.titleDisplay || card.katakana}、${card.english}`);
-  $("undo-answer").disabled = state.cardIndex === 0;
   renderProgress();
   renderTitleStats();
   state.isAnimating = false;
@@ -574,7 +608,6 @@ function answerCard(answer) {
   $("card-answer").hidden = false;
   $("screen-scan").classList.add("is-revealing");
   document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = true; });
-  $("undo-answer").disabled = true;
   cancelSpeech();
   recordAnswer(cardData, answer);
   saveProgress();
@@ -590,13 +623,6 @@ function answerCard(answer) {
       renderResult();
     }
   }, ANSWER_REVEAL_MS);
-}
-
-function undoAnswer() {
-  if (state.isAnimating || state.cardIndex === 0) return;
-  state.answers[state.cardIndex - 1] = null;
-  state.cardIndex -= 1;
-  renderCard();
 }
 
 function getScores() {
@@ -620,10 +646,10 @@ function getScores() {
 }
 
 function rankFor(score, route = state.route) {
-  const label = route === "sega" ? "セガ" : "ゲーム";
-  if (score >= 80) return `${label}マニア！`;
-  if (score >= 50) return `${label}ファン！`;
-  return `ふつうの${label}好き`;
+  const label = ROUTE_RANK_LABELS[route] || "ゲーム";
+  if (score >= 80) return `あなたは${label}マニア！`;
+  if (score >= 50) return `あなたは${label}ファン！`;
+  return `あなたは${label}好き！`;
 }
 
 function resultTier(score) {
@@ -662,30 +688,28 @@ function renderResult() {
   const sessionEntries = buildSessionEntries(scores);
   $("result-score").textContent = String(scores.score);
   $("result-rank").textContent = activeCards().length === 0 ? "このモードの登録単語はすべて覚えています！" : rankFor(scores.score, state.route);
+  $("result-correct-count").textContent = String(scores.known.length);
+  $("result-new-count").textContent = String(state.newlyKnownKeys.size);
+  $("result-vocab-count").textContent = String(vocabularyCount());
   renderSessionWordLists(sessionEntries);
   showScreen("screen-result");
   celebrateResult("screen-result", scores.score);
 }
 
 function buildNetworkQueue() {
-  const knownCards = activeCards().filter((_, index) => state.answers[index] === "known");
-  const parentQueue = [];
-  const networkLimit = state.route === "sega" ? Number.POSITIVE_INFINITY : OTHER_NETWORK_LIMIT;
-  if (state.route === "sega") parentQueue.push(...knownCards);
-  else {
-    Object.entries(BAND_META).forEach(([band, meta]) => {
-      parentQueue.push(...knownCards.filter((card) => card.difficulty === band).slice(0, meta.quota));
-    });
-    knownCards.forEach((card) => {
-      if (parentQueue.length < networkLimit && !parentQueue.includes(card)) parentQueue.push(card);
-    });
-  }
+  const answeredCards = activeCards().map((card, index) => ({ card, answer: state.answers[index] }))
+    .filter((item) => item.answer === "known" || item.answer === "unknown");
+  const parentQueue = [
+    ...answeredCards.filter((item) => item.answer === "known"),
+    ...answeredCards.filter((item) => item.answer === "unknown")
+  ].map((item) => item.card);
   const queue = [];
+  const queuedKeys = new Set();
   parentQueue.forEach((card) => {
     const terms = Array.isArray(card.networkTerms) && card.networkTerms.length > 0 ? card.networkTerms : [card];
-    if (queue.length + terms.length > networkLimit) return;
     terms.forEach((term, index) => {
-      queue.push(terms.length === 1 ? card : {
+      if (queue.length >= NETWORK_LIMIT) return;
+      const networkCard = terms.length === 1 ? card : {
         ...card,
         entryId: `${card.entryId}-W${index + 1}`,
         questionId: `${card.questionId}-W${index + 1}`,
@@ -696,13 +720,18 @@ function buildNetworkQueue() {
         left: term.left,
         right: term.right,
         networkTerms: []
-      });
+      };
+      const key = cardKey(networkCard);
+      if (!key || queuedKeys.has(key)) return;
+      queuedKeys.add(key);
+      queue.push(networkCard);
     });
   });
   return queue;
 }
 
 function startNetworks() {
+  playDecisionFeedback();
   state.networkQueue = buildNetworkQueue();
   state.networkIndex = 0;
   state.networkChoices = Array(state.networkQueue.length).fill(null);
@@ -924,36 +953,6 @@ function onPointerEnd(event) {
   else resetDragVisuals();
 }
 
-function resetRouteDragVisuals() {
-  const card = $("route-card");
-  card.classList.remove("is-dragging");
-  card.style.setProperty("--route-x", "0px");
-  card.style.setProperty("--route-rotation", "0deg");
-}
-
-function onRoutePointerDown(event) {
-  if (event.button > 0) return;
-  state.routeDrag = { pointerId: event.pointerId, startX: event.clientX, currentX: event.clientX };
-  $("route-card").classList.add("is-dragging");
-  $("route-card").setPointerCapture?.(event.pointerId);
-}
-
-function onRoutePointerMove(event) {
-  if (!state.routeDrag || state.routeDrag.pointerId !== event.pointerId) return;
-  state.routeDrag.currentX = event.clientX;
-  const delta = event.clientX - state.routeDrag.startX;
-  $("route-card").style.setProperty("--route-x", `${delta}px`);
-  $("route-card").style.setProperty("--route-rotation", `${delta / 24}deg`);
-}
-
-function onRoutePointerEnd(event) {
-  if (!state.routeDrag || state.routeDrag.pointerId !== event.pointerId) return;
-  const delta = state.routeDrag.currentX - state.routeDrag.startX;
-  state.routeDrag = null;
-  if (Math.abs(delta) >= 72) chooseRoute(delta < 0 ? "sega" : "other");
-  else resetRouteDragVisuals();
-}
-
 function initializeProgressPips() {
   const fragment = document.createDocumentFragment();
   for (let index = 0; index < 10; index += 1) fragment.append(document.createElement("i"));
@@ -983,11 +982,6 @@ $("scan-card").addEventListener("pointermove", onPointerMove);
 $("scan-card").addEventListener("pointerup", onPointerEnd);
 $("scan-card").addEventListener("pointercancel", onPointerEnd);
 
-$("route-card").addEventListener("pointerdown", onRoutePointerDown);
-$("route-card").addEventListener("pointermove", onRoutePointerMove);
-$("route-card").addEventListener("pointerup", onRoutePointerEnd);
-$("route-card").addEventListener("pointercancel", onRoutePointerEnd);
-
 $("screen-network").addEventListener("click", (event) => {
   const node = event.target.closest(".network-node");
   if (node) {
@@ -1011,7 +1005,6 @@ document.addEventListener("click", (event) => {
   const actionTarget = event.target.closest("[data-action]");
   if (!actionTarget) return;
   const actions = {
-    undo: undoAnswer,
     "toggle-sound": toggleSound,
     "start-networks": startNetworks,
     "open-history": openHistory,
@@ -1025,7 +1018,6 @@ document.addEventListener("click", (event) => {
       state.route = null;
       state.pendingRoute = null;
       setRouteVisuals();
-      resetRouteDragVisuals();
       renderTitleStats();
       showScreen("screen-home");
     }
@@ -1035,8 +1027,16 @@ document.addEventListener("click", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (!$("screen-home").hidden) {
-    if (event.key === "ArrowLeft") chooseRoute("sega");
-    if (event.key === "ArrowRight") chooseRoute("other");
+    const route = ({ "1": "sega", "2": "nintendo", "3": "sony", "4": "xbox" })[event.key];
+    if (route) chooseRoute(route);
+    return;
+  }
+  if (event.key === "Escape") {
+    resetState();
+    state.route = null;
+    setRouteVisuals();
+    renderTitleStats();
+    showScreen("screen-home");
     return;
   }
   if (!$("screen-scan").hidden && !state.isAnimating) {
