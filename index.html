@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#fff8e8">
-  <meta name="description" content="セガ30作品またはゲーム英語100問から、知っていた英語を発掘するローカル完結のM0体験プロトタイプ。">
+  <meta name="description" content="ゲーマーワードクエスト おまえはすでに知っている！ ゲーム英語の埋蔵資産を発掘するローカル完結のM0公開テスト。">
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" href="data:,">
-  <title>KNOWN QUEST — セガ派？ その他派？</title>
+  <title>ゲーマーワードクエスト — おまえはすでに知っている！</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <button class="brand" type="button" data-action="home" aria-label="KNOWN QUEST ホーム">KQ</button>
+    <button class="brand" type="button" data-action="home" aria-label="ゲーマーワードクエスト ホーム">KQ</button>
     <div class="top-actions">
       <button id="sound-toggle" class="sound-toggle" type="button" data-action="toggle-sound" data-testid="sound-toggle" aria-label="音声をオフにする" aria-pressed="true">🔊</button>
       <span class="test-chip">M0 PUBLIC TEST</span>
@@ -26,12 +26,24 @@
           <img src="sega-guide-avatar.png" alt="">
           <img src="guide-avatar-v2.png" alt="">
         </div>
-        <h1 id="home-title">あなたは<br><span>どっち派？</span></h1>
+        <h1 id="home-title">ゲーマーワードクエスト<br><span>おまえはすでに知っている！</span></h1>
+        <p class="vocabulary-power">
+          いまのあなたの語彙パワー：<strong id="title-vocab-count">0</strong>語
+        </p>
       </div>
+
       <div class="route-actions" role="group" aria-label="ゲーム英語ルートを左右から選択">
         <button class="route-button route-sega" type="button" data-route="sega" data-testid="route-sega"><span aria-hidden="true">←</span> セガ派</button>
         <button class="route-button route-other" type="button" data-route="other" data-testid="route-other">その他派 <span aria-hidden="true">→</span></button>
       </div>
+
+      <button id="history-open" class="history-button" type="button" data-action="open-history" data-testid="open-history">
+        これまでの単語を見る
+      </button>
+
+      <p class="home-note">
+        現在の試作で遊べるのは セガ派 / その他派 です。記録はブラウザに保存されます。
+      </p>
     </section>
 
     <section id="screen-scan" class="screen" aria-labelledby="scan-title" hidden>
@@ -69,7 +81,20 @@
         <h2 id="result-title">GAME ENGLISH</h2>
         <div class="score"><strong id="result-score">0</strong><span>/100</span></div>
         <div id="result-rank" class="rank-label" aria-live="polite">ゲーム好き</div>
-        <button class="primary-button" type="button" data-action="start-networks" data-testid="start-networks">つなぐ</button>
+        <div class="result-lists" aria-label="今回の出題単語一覧">
+          <section class="result-list-block">
+            <h3>もう知っている単語 <span id="result-known-count">0</span>語</h3>
+            <div id="result-known-list" class="word-list" data-testid="result-known-list"></div>
+          </section>
+          <section class="result-list-block">
+            <h3>まだ知らない単語 <span id="result-unknown-count">0</span>語</h3>
+            <div id="result-unknown-list" class="word-list" data-testid="result-unknown-list"></div>
+          </section>
+        </div>
+        <div class="result-actions">
+          <button class="secondary-button" type="button" data-action="home">タイトルに戻る</button>
+          <button class="primary-button" type="button" data-action="start-networks" data-testid="start-networks">類語で広げる</button>
+        </div>
       </div>
     </section>
 
@@ -112,7 +137,49 @@
         <h2 id="final-title">GAME ENGLISH</h2>
         <div class="score"><strong id="final-score">0</strong><span>/100</span></div>
         <div id="final-rank" class="rank-label" aria-live="polite">ゲーム好き</div>
-        <button class="primary-button" type="button" data-action="restart">もう一度</button>
+        <div class="result-actions">
+          <button class="secondary-button" type="button" data-action="home">タイトルに戻る</button>
+          <button class="primary-button" type="button" data-action="restart">もう一度</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-history" class="screen history-screen" aria-labelledby="history-title" hidden>
+      <div class="history-stage">
+        <h2 id="history-title">これまでの単語を見る</h2>
+        <p class="history-power">
+          いまのあなたの語彙パワー：<strong id="history-vocab-count">0</strong>語
+        </p>
+        <div class="history-summary">
+          <div class="history-stat">
+            <strong id="history-known-count">0</strong>
+            <span>もう知っている単語</span>
+          </div>
+          <div class="history-stat">
+            <strong id="history-unknown-count">0</strong>
+            <span>まだ知らない単語</span>
+          </div>
+        </div>
+        <section class="history-block">
+          <h3>もう知っている単語</h3>
+          <div id="history-known-list" class="word-list history-list" data-testid="history-known-list"></div>
+        </section>
+        <section class="history-block">
+          <h3>まだ知らない単語</h3>
+          <div id="history-unknown-list" class="word-list history-list" data-testid="history-unknown-list"></div>
+        </section>
+        <button class="primary-button" type="button" data-action="home" data-testid="history-home">タイトルに戻る</button>
+      </div>
+    </section>
+
+    <section id="screen-replay" class="screen replay-screen" aria-labelledby="replay-title" hidden>
+      <div class="replay-stage">
+        <h2 id="replay-title">すでに覚えた単語はスキップしますか？</h2>
+        <p id="replay-mode-label" class="replay-mode-label"></p>
+        <div class="replay-actions">
+          <button class="secondary-button" type="button" data-action="replay-skip-yes" data-testid="replay-skip-yes">はい</button>
+          <button class="primary-button" type="button" data-action="replay-skip-no" data-testid="replay-skip-no">いいえ</button>
+        </div>
       </div>
     </section>
   </main>

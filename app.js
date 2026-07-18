@@ -7,6 +7,20 @@ const DEFAULT_ANSWER_REVEAL_MS = 2000;
 const ANSWER_REVEAL_MS = Number.isFinite(window.__KQ_TEST_REVEAL_MS)
   ? Math.max(80, Number(window.__KQ_TEST_REVEAL_MS))
   : DEFAULT_ANSWER_REVEAL_MS;
+const STORAGE_VERSION = 1;
+const STORAGE_KEY = "known-quest-demo:v1";
+const STORAGE_MODE_KEYS = ["sega", "other", "nintendo", "sony", "xbox"];
+const MODE_LABELS = Object.freeze({
+  sega: "セガ派",
+  other: "その他派",
+  nintendo: "任天堂派",
+  sony: "ソニー派",
+  xbox: "MS／Xbox派"
+});
+const BASE_ROUTE_LABELS = Object.freeze({
+  sega: "SEGA ENGLISH",
+  other: "GAME ENGLISH"
+});
 const BAND_META = Object.freeze({
   beginner: { quota: 4, weight: 1 },
   intermediate: { quota: 3, weight: 2 },
@@ -20,6 +34,8 @@ if (!Array.isArray(otherCards) || otherCards.length !== OTHER_CARD_COUNT || !Arr
 const $ = (id) => document.getElementById(id);
 const state = {
   route: null,
+  pendingRoute: null,
+  playCards: null,
   cardIndex: 0,
   answers: [],
   networkQueue: [],
@@ -32,16 +48,220 @@ const state = {
   soundEnabled: true,
   answerTimer: null,
   drag: null,
-  routeDrag: null
+  routeDrag: null,
+  progress: loadProgress()
 };
 let answerAudioContext = null;
 
+function normalizeEnglish(value) {
+  return String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function baseCardsForRoute(route) {
+  return route === "sega" ? segaCards : otherCards;
+}
+
 function activeCards() {
-  return state.route === "sega" ? segaCards : otherCards;
+  if (Array.isArray(state.playCards)) return state.playCards;
+  return state.route ? baseCardsForRoute(state.route) : [];
 }
 
 function routeTotal() {
   return activeCards().length;
+}
+
+function routeLabel(route = state.route) {
+  return MODE_LABELS[route] || "ゲーム";
+}
+
+function routeCardLabel(route = state.route) {
+  return BASE_ROUTE_LABELS[route] || "GAME ENGLISH";
+}
+
+function cardKey(card) {
+  return normalizeEnglish(card?.english) || String(card?.questionId || card?.entryId || "");
+}
+
+function createEmptyProgress() {
+  const modePlays = {};
+  STORAGE_MODE_KEYS.forEach((key) => { modePlays[key] = 0; });
+  return { version: STORAGE_VERSION, entries: {}, modePlays };
+}
+
+function sanitizeProgress(raw) {
+  const seed = createEmptyProgress();
+  if (!raw || typeof raw !== "object") return seed;
+  const progress = createEmptyProgress();
+  if (raw.entries && typeof raw.entries === "object") {
+    Object.entries(raw.entries).forEach(([key, value]) => {
+      if (!key || !value || typeof value !== "object") return;
+      const safeKey = String(key);
+      progress.entries[safeKey] = {
+        key: safeKey,
+        english: String(value.english || ""),
+        meaningJa: String(value.meaningJa || ""),
+        sourceTitle: String(value.sourceTitle || ""),
+        firstMode: String(value.firstMode || ""),
+        firstQuestionId: String(value.firstQuestionId || ""),
+        firstSeenAt: String(value.firstSeenAt || ""),
+        lastSeenAt: String(value.lastSeenAt || ""),
+        status: value.status === "known" ? "known" : "unknown",
+        seenCount: Number(value.seenCount) || 0,
+        correctCount: Number(value.correctCount) || 0,
+        incorrectCount: Number(value.incorrectCount) || 0,
+        modes: value.modes && typeof value.modes === "object" ? { ...value.modes } : {}
+      };
+    });
+  } else if (Array.isArray(raw.seenWords) || Array.isArray(raw.knownWords) || Array.isArray(raw.unknownWords)) {
+    const seenWords = Array.isArray(raw.seenWords) ? raw.seenWords : [];
+    const knownWords = new Set(Array.isArray(raw.knownWords) ? raw.knownWords.map((item) => String(item)) : []);
+    const unknownWords = new Set(Array.isArray(raw.unknownWords) ? raw.unknownWords.map((item) => String(item)) : []);
+    seenWords.forEach((key) => {
+      const safeKey = String(key);
+      progress.entries[safeKey] = {
+        key: safeKey,
+        english: safeKey,
+        meaningJa: "",
+        sourceTitle: "",
+        firstMode: "",
+        firstQuestionId: "",
+        firstSeenAt: "",
+        lastSeenAt: "",
+        status: knownWords.has(safeKey) ? "known" : unknownWords.has(safeKey) ? "unknown" : "unknown",
+        seenCount: 1,
+        correctCount: knownWords.has(safeKey) ? 1 : 0,
+        incorrectCount: unknownWords.has(safeKey) ? 1 : 0,
+        modes: {}
+      };
+    });
+  }
+  if (raw.modePlays && typeof raw.modePlays === "object") {
+    STORAGE_MODE_KEYS.forEach((key) => {
+      progress.modePlays[key] = Number(raw.modePlays[key]) || 0;
+    });
+  }
+  return progress;
+}
+
+function loadProgress() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return createEmptyProgress();
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.version !== STORAGE_VERSION) return sanitizeProgress(parsed);
+    return sanitizeProgress(parsed);
+  } catch {
+    return createEmptyProgress();
+  }
+}
+
+function saveProgress() {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state.progress));
+  } catch {}
+}
+
+function resetVocabularyProgress() {
+  state.progress = createEmptyProgress();
+  saveProgress();
+  renderTitleStats();
+  renderHistoryScreen();
+}
+
+window.__resetVocabularyProgress = resetVocabularyProgress;
+
+function vocabularyCount() {
+  return Object.values(state.progress.entries).filter((entry) => entry.status === "known").length;
+}
+
+function seenEntries() {
+  return Object.values(state.progress.entries).filter((entry) => entry.seenCount > 0);
+}
+
+function knownEntries() {
+  return seenEntries().filter((entry) => entry.status === "known").sort((a, b) => (a.firstSeenAt || "").localeCompare(b.firstSeenAt || "") || a.english.localeCompare(b.english));
+}
+
+function unknownEntries() {
+  return seenEntries().filter((entry) => entry.status === "unknown").sort((a, b) => (a.firstSeenAt || "").localeCompare(b.firstSeenAt || "") || a.english.localeCompare(b.english));
+}
+
+function statusEntryText(entry) {
+  if (entry.status === "known") return "もう知っている単語";
+  return "まだ知らない単語";
+}
+
+function modeNames(entry) {
+  const modes = Object.entries(entry.modes || {}).filter(([, active]) => active).map(([key]) => MODE_LABELS[key] || key);
+  return modes.length ? modes.join(" / ") : "";
+}
+
+function listItemPayload(entry) {
+  return {
+    english: entry.english || "",
+    meaningJa: entry.meaningJa || "",
+    sourceTitle: entry.sourceTitle || "",
+    modeText: modeNames(entry),
+    statusText: statusEntryText(entry)
+  };
+}
+
+function createWordRow(item) {
+  const row = document.createElement("article");
+  row.className = "word-row";
+  const main = document.createElement("div");
+  main.className = "word-row-main";
+  const word = document.createElement("strong");
+  word.textContent = item.english || "";
+  const meaning = document.createElement("span");
+  meaning.textContent = item.meaningJa || "";
+  main.append(word, meaning);
+  const meta = document.createElement("div");
+  meta.className = "word-row-meta";
+  const status = document.createElement("span");
+  status.className = "word-row-tag";
+  status.textContent = item.statusText || "";
+  meta.append(status);
+  if (item.modeText) {
+    const mode = document.createElement("span");
+    mode.className = "word-row-mode";
+    mode.textContent = item.modeText;
+    meta.append(mode);
+  }
+  if (item.sourceTitle) {
+    const title = document.createElement("span");
+    title.className = "word-row-source";
+    title.textContent = item.sourceTitle;
+    meta.append(title);
+  }
+  row.append(main, meta);
+  return row;
+}
+
+function renderWordList(container, entries, emptyMessage) {
+  container.replaceChildren();
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-list";
+    empty.textContent = emptyMessage;
+    container.append(empty);
+    return;
+  }
+  entries.forEach((entry) => {
+    container.append(createWordRow(listItemPayload(entry)));
+  });
+}
+
+function renderTitleStats() {
+  const count = vocabularyCount();
+  $("title-vocab-count").textContent = String(count);
+  $("history-vocab-count").textContent = String(count);
+  $("history-known-count").textContent = String(knownEntries().length);
+  $("history-unknown-count").textContent = String(unknownEntries().length);
 }
 
 function cancelSpeech() {
@@ -124,7 +344,7 @@ function toggleSound() {
   state.soundEnabled = !state.soundEnabled;
   updateSoundToggle();
   cancelSpeech();
-  if (state.soundEnabled && !$("screen-scan").hidden && !state.isAnimating) speakEnglish(activeCards()[state.cardIndex].english);
+  if (state.soundEnabled && !$("screen-scan").hidden && !state.isAnimating && activeCards()[state.cardIndex]) speakEnglish(activeCards()[state.cardIndex].english);
 }
 
 function showScreen(id) {
@@ -141,7 +361,8 @@ function resetState() {
   state.answerTimer = null;
   cancelSpeech();
   state.cardIndex = 0;
-  state.answers = Array(routeTotal()).fill(null);
+  state.answers = [];
+  state.playCards = null;
   state.networkQueue = [];
   state.networkIndex = 0;
   state.networkChoices = [];
@@ -161,23 +382,61 @@ function setRouteVisuals() {
     avatar.src = sega ? "sega-guide-avatar.png" : "guide-avatar-v2.png";
     avatar.alt = sega ? "AI生成のセガ派用オリジナル仮ガイドキャラクター" : "AI生成の仮ガイドキャラクター";
   });
-  const label = sega ? "SEGA ENGLISH" : "GAME ENGLISH";
+  const label = sega ? BASE_ROUTE_LABELS.sega : BASE_ROUTE_LABELS.other;
   $("result-title").textContent = label;
   $("final-title").textContent = label;
+}
+
+function renderHistoryScreen() {
+  renderTitleStats();
+  renderWordList($("history-known-list"), knownEntries(), "まだクイズで見た単語はありません");
+  renderWordList($("history-unknown-list"), unknownEntries(), "まだクイズで見た単語はありません");
 }
 
 function chooseRoute(route) {
   if (!["sega", "other"].includes(route)) return;
   state.route = route;
   setRouteVisuals();
-  startScan();
+  if (state.progress.modePlays[route] > 0) {
+    state.pendingRoute = route;
+    $("replay-mode-label").textContent = `${routeLabel(route)} を続けて遊びます。`;
+    showScreen("screen-replay");
+    return;
+  }
+  beginRoutePlay(route, false);
+}
+
+function beginRoutePlay(route, skipKnown) {
+  if (!["sega", "other"].includes(route)) return;
+  state.route = route;
+  setRouteVisuals();
+  resetState();
+  state.route = route;
+  state.playCards = filterCardsForRoute(route, skipKnown);
+  state.answers = Array(state.playCards.length).fill(null);
+  state.progress.modePlays[route] = (state.progress.modePlays[route] || 0) + 1;
+  saveProgress();
+  renderTitleStats();
+  if (state.playCards.length === 0) {
+    renderResult();
+    return;
+  }
+  showScreen("screen-scan");
+  renderCard();
+}
+
+function filterCardsForRoute(route, skipKnown) {
+  const cards = baseCardsForRoute(route);
+  if (!skipKnown) return cards.slice();
+  return cards.filter((card) => {
+    const entry = state.progress.entries[cardKey(card)];
+    return !(entry && entry.status === "known");
+  });
 }
 
 function startScan() {
   if (!state.route) return;
-  resetState();
-  showScreen("screen-scan");
-  renderCard();
+  beginRoutePlay(state.route, false);
 }
 
 function clearSwipeVisuals() {
@@ -193,15 +452,69 @@ function clearSwipeVisuals() {
 }
 
 function renderProgress() {
-  const currentBlock = Math.min(9, Math.floor((state.cardIndex / routeTotal()) * 10));
+  const total = routeTotal();
+  const currentBlock = total > 0 ? Math.min(9, Math.floor((state.cardIndex / total) * 10)) : 0;
   $("progress-pips").querySelectorAll("i").forEach((pip, index) => {
     pip.classList.toggle("is-done", index < currentBlock);
     pip.classList.toggle("is-now", index === currentBlock);
   });
 }
 
+function recordSeen(card) {
+  const key = cardKey(card);
+  if (!key) return;
+  const now = nowIso();
+  const existing = state.progress.entries[key] || {
+    key,
+    english: card.english.toLowerCase(),
+    meaningJa: card.meaningJa || card.answerJa || card.context || "",
+    sourceTitle: card.sourceTitle || card.titleDisplay || "",
+    firstMode: state.route || "",
+    firstQuestionId: card.questionId || "",
+    firstSeenAt: now,
+    lastSeenAt: now,
+    status: "unknown",
+    seenCount: 0,
+    correctCount: 0,
+    incorrectCount: 0,
+    modes: {}
+  };
+  existing.english = card.english.toLowerCase();
+  existing.meaningJa = card.meaningJa || card.answerJa || card.context || existing.meaningJa;
+  existing.sourceTitle = card.sourceTitle || card.titleDisplay || existing.sourceTitle;
+  existing.firstMode ||= state.route || "";
+  existing.firstQuestionId ||= card.questionId || "";
+  existing.firstSeenAt ||= now;
+  existing.lastSeenAt = now;
+  existing.seenCount = Number(existing.seenCount) + 1;
+  existing.modes = existing.modes && typeof existing.modes === "object" ? existing.modes : {};
+  if (state.route) existing.modes[state.route] = true;
+  if (existing.status !== "known") existing.status = "unknown";
+  state.progress.entries[key] = existing;
+}
+
+function recordAnswer(card, answer) {
+  const key = cardKey(card);
+  if (!key) return;
+  const existing = state.progress.entries[key] || null;
+  if (!existing) return;
+  existing.correctCount = Number(existing.correctCount) + (answer === "known" ? 1 : 0);
+  existing.incorrectCount = Number(existing.incorrectCount) + (answer === "unknown" ? 1 : 0);
+  if (answer === "known") {
+    existing.status = "known";
+  } else if (existing.status !== "known") {
+    existing.status = "unknown";
+  }
+  existing.lastSeenAt = nowIso();
+}
+
 function renderCard() {
   const card = activeCards()[state.cardIndex];
+  if (!card) {
+    renderResult();
+    return;
+  }
+  recordSeen(card);
   clearSwipeVisuals();
   $("screen-scan").classList.remove("is-revealing");
   $("scan-card").classList.remove("is-answer-known", "is-answer-unknown");
@@ -234,9 +547,17 @@ function renderCard() {
   $("scan-card").setAttribute("aria-label", `${card.titleDisplay || card.katakana}、${card.english}`);
   $("undo-answer").disabled = state.cardIndex === 0;
   renderProgress();
+  renderTitleStats();
   state.isAnimating = false;
   state.drag = null;
   speakEnglish(card.english);
+}
+
+function renderSessionWordLists(scores) {
+  $("result-known-count").textContent = String(scores.known.length);
+  $("result-unknown-count").textContent = String(scores.unknown.length);
+  renderWordList($("result-known-list"), scores.known, "今回のプレイではまだ正解した単語がありません");
+  renderWordList($("result-unknown-list"), scores.unknown, "今回のプレイではまだ不正解の単語がありません");
 }
 
 function answerCard(answer) {
@@ -255,6 +576,9 @@ function answerCard(answer) {
   document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = true; });
   $("undo-answer").disabled = true;
   cancelSpeech();
+  recordAnswer(cardData, answer);
+  saveProgress();
+  renderTitleStats();
   playAnswerFeedback(answer);
   state.answerTimer = window.setTimeout(() => {
     state.answerTimer = null;
@@ -279,7 +603,8 @@ function getScores() {
   let weightedKnown = 0;
   let weightedTotal = 0;
   let known = 0;
-  activeCards().forEach((card, index) => {
+  const cards = activeCards();
+  cards.forEach((card, index) => {
     const weight = BAND_META[card.difficulty]?.weight || 1;
     weightedTotal += weight;
     if (state.answers[index] === "known") {
@@ -288,9 +613,9 @@ function getScores() {
     }
   });
   return {
-    known,
-    unknown: state.answers.filter((answer) => answer === "unknown").length,
-    score: Math.round((weightedKnown / weightedTotal) * 100)
+    known: cards.filter((_, index) => state.answers[index] === "known"),
+    unknown: cards.filter((_, index) => state.answers[index] === "unknown"),
+    score: weightedTotal === 0 ? 0 : Math.round((weightedKnown / weightedTotal) * 100)
   };
 }
 
@@ -315,10 +640,29 @@ function celebrateResult(screenId, score) {
   screen.classList.add("is-celebrating");
 }
 
+function buildSessionEntries(scores) {
+  const cards = activeCards();
+  const entries = cards.map((card, index) => ({
+    key: cardKey(card),
+    english: card.english.toLowerCase(),
+    meaningJa: card.meaningJa || card.answerJa || card.context || "",
+    sourceTitle: card.sourceTitle || card.titleDisplay || "",
+    modeText: routeLabel(state.route),
+    statusText: state.answers[index] === "known" ? "もう知っている単語" : "まだ知らない単語",
+    status: state.answers[index] === "known" ? "known" : "unknown",
+    order: index
+  }));
+  const known = entries.filter((entry) => entry.status === "known").sort((a, b) => a.order - b.order);
+  const unknown = entries.filter((entry) => entry.status === "unknown").sort((a, b) => a.order - b.order);
+  return { known, unknown };
+}
+
 function renderResult() {
   const scores = getScores();
+  const sessionEntries = buildSessionEntries(scores);
   $("result-score").textContent = String(scores.score);
-  $("result-rank").textContent = rankFor(scores.score, state.route);
+  $("result-rank").textContent = activeCards().length === 0 ? "このモードの登録単語はすべて覚えています！" : rankFor(scores.score, state.route);
+  renderSessionWordLists(sessionEntries);
   showScreen("screen-result");
   celebrateResult("screen-result", scores.score);
 }
@@ -616,6 +960,24 @@ function initializeProgressPips() {
   $("progress-pips").append(fragment);
 }
 
+function openHistory() {
+  renderHistoryScreen();
+  showScreen("screen-history");
+}
+
+function openReplayPrompt(route) {
+  state.pendingRoute = route;
+  $("replay-mode-label").textContent = `${routeLabel(route)} を続けて遊びます。`;
+  showScreen("screen-replay");
+}
+
+function replayChoice(skipKnown) {
+  if (!state.pendingRoute) return;
+  const route = state.pendingRoute;
+  state.pendingRoute = null;
+  beginRoutePlay(route, skipKnown);
+}
+
 $("scan-card").addEventListener("pointerdown", onPointerDown);
 $("scan-card").addEventListener("pointermove", onPointerMove);
 $("scan-card").addEventListener("pointerup", onPointerEnd);
@@ -652,12 +1014,19 @@ document.addEventListener("click", (event) => {
     undo: undoAnswer,
     "toggle-sound": toggleSound,
     "start-networks": startNetworks,
-    restart: startScan,
+    "open-history": openHistory,
+    "replay-skip-yes": () => replayChoice(true),
+    "replay-skip-no": () => replayChoice(false),
+    restart: () => {
+      if (state.route) openReplayPrompt(state.route);
+    },
     home: () => {
       resetState();
       state.route = null;
+      state.pendingRoute = null;
       setRouteVisuals();
       resetRouteDragVisuals();
+      renderTitleStats();
       showScreen("screen-home");
     }
   };
@@ -693,4 +1062,6 @@ window.addEventListener("resize", () => {
 initializeProgressPips();
 updateSoundToggle();
 setRouteVisuals();
+renderTitleStats();
+renderHistoryScreen();
 showScreen("screen-home");
