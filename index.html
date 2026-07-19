@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#fff8e8">
-  <meta name="description" content="ゲーマーワードクエスト おまえはすでに知っている！ ゲーム英語の埋蔵資産を発掘するローカル完結のM0公開テスト。">
+  <meta name="description" content="ボキャブラクエスト お前はすでに知っている！ ゲーム英語の埋蔵資産を発掘するローカル完結のM0公開テスト。">
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" href="data:,">
-  <title>ゲーマーワードクエスト — おまえはすでに知っている！</title>
+  <title>ボキャブラクエスト — お前はすでに知っている！</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <button class="brand" type="button" data-action="home" aria-label="ゲーマーワードクエスト ホーム">KQ</button>
+    <button class="brand" type="button" data-action="home" aria-label="ボキャブラクエスト タイトルに戻る">BQ</button>
     <div class="top-actions">
       <button id="sound-toggle" class="sound-toggle" type="button" data-action="toggle-sound" data-testid="sound-toggle" aria-label="音声をオフにする" aria-pressed="true">🔊</button>
       <span class="test-chip">M0 PUBLIC TEST</span>
@@ -22,21 +22,23 @@
   <main id="app" class="app-shell">
     <section id="screen-home" class="screen is-active" aria-labelledby="home-title">
       <div class="route-card">
-        <h1 id="home-title">ゲーマーワードクエスト<br><span>おまえはすでに知っている！</span></h1>
+        <p class="home-catch">お前はすでに知っている！</p>
+        <h1 id="home-title">ボキャブラクエスト</h1>
         <p class="vocabulary-power">
-          いまのあなたの語彙パワー：<strong id="title-vocab-count">0</strong>語
+          あなたの超人強度：<strong id="title-vocab-count">0</strong>語
         </p>
       </div>
 
       <div class="route-actions" role="group" aria-label="好きなゲーム陣営を選択">
         <button class="route-button route-sega" type="button" data-route="sega" data-testid="route-sega"><span class="mascot" data-mode="sega" aria-hidden="true"></span><b>セガ派</b></button>
         <button class="route-button route-nintendo" type="button" data-route="nintendo" data-testid="route-nintendo"><span class="mascot" data-mode="nintendo" aria-hidden="true"></span><b>任天堂派</b></button>
-        <button class="route-button route-sony" type="button" data-route="sony" data-testid="route-sony"><span class="mascot" data-mode="sony" aria-hidden="true"></span><b>ソニー派</b></button>
-        <button class="route-button route-xbox" type="button" data-route="xbox" data-testid="route-xbox"><span class="mascot" data-mode="xbox" aria-hidden="true"></span><b>MS／Xbox派</b></button>
+        <button class="route-button route-sony" type="button" data-route="sony" data-testid="route-sony"><span class="mascot" data-mode="sony" aria-hidden="true"></span><b>PS派</b></button>
+        <button class="route-button route-xbox" type="button" data-route="xbox" data-testid="route-xbox"><span class="mascot" data-mode="xbox" aria-hidden="true"></span><b>Xbox派</b></button>
+        <button class="route-button route-mycom" type="button" data-route="mycom" data-testid="route-mycom"><span class="mascot" data-mode="mycom" aria-hidden="true"></span><b>マイコン族</b></button>
       </div>
 
       <button id="history-open" class="history-button" type="button" data-action="open-history" data-testid="open-history">
-        これまでの単語を見る
+        マスターしたワード
       </button>
 
       <p class="home-note">好きな陣営のタイトルで、知っていた英語を発掘しよう。</p>
@@ -93,7 +95,7 @@
         </div>
         <div class="result-actions">
           <button class="secondary-button" type="button" data-action="home">タイトルに戻る</button>
-          <button class="primary-button" type="button" data-action="start-networks" data-testid="start-networks">類語で広げる</button>
+          <div class="disabled-feature"><button class="primary-button" type="button" data-testid="start-networks" disabled aria-disabled="true">類語でつなげる</button><small>デモ版では省略</small></div>
         </div>
       </div>
     </section>
@@ -146,9 +148,9 @@
 
     <section id="screen-history" class="screen history-screen" aria-labelledby="history-title" hidden>
       <div class="history-stage">
-        <h2 id="history-title">これまでの単語を見る</h2>
+        <h2 id="history-title">マスターしたワード</h2>
         <p class="history-power">
-          いまのあなたの語彙パワー：<strong id="history-vocab-count">0</strong>語
+          あなたの超人強度：<strong id="history-vocab-count">0</strong>語
         </p>
         <div class="history-summary">
           <div class="history-stat">

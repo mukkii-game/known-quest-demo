@@ -8,26 +8,29 @@ const ANSWER_REVEAL_MS = Number.isFinite(window.__KQ_TEST_REVEAL_MS)
   : DEFAULT_ANSWER_REVEAL_MS;
 const STORAGE_VERSION = 1;
 const STORAGE_KEY = "known-quest-demo:v1";
-const ACTIVE_ROUTES = Object.freeze(["sega", "nintendo", "sony", "xbox"]);
-const STORAGE_MODE_KEYS = ["sega", "other", "nintendo", "sony", "xbox"];
+const ACTIVE_ROUTES = Object.freeze(["sega", "nintendo", "sony", "xbox", "mycom"]);
+const STORAGE_MODE_KEYS = ["sega", "other", "nintendo", "sony", "xbox", "mycom"];
 const MODE_LABELS = Object.freeze({
   sega: "セガ派",
   other: "旧・その他派",
   nintendo: "任天堂派",
-  sony: "ソニー派",
-  xbox: "MS／Xbox派"
+  sony: "PS派",
+  xbox: "Xbox派",
+  mycom: "マイコン族"
 });
 const BASE_ROUTE_LABELS = Object.freeze({
   sega: "SEGA ENGLISH",
   nintendo: "NINTENDO ENGLISH",
   sony: "PLAYSTATION ENGLISH",
-  xbox: "XBOX ENGLISH"
+  xbox: "XBOX ENGLISH",
+  mycom: "RETRO PC ENGLISH"
 });
 const ROUTE_RANK_LABELS = Object.freeze({
   sega: "セガ",
   nintendo: "任天堂",
   sony: "ソニー",
-  xbox: "Xbox"
+  xbox: "Xbox",
+  mycom: "マイコン"
 });
 const BAND_META = Object.freeze({
   beginner: { quota: 4, weight: 1 },
@@ -35,7 +38,7 @@ const BAND_META = Object.freeze({
   advanced: { quota: 3, weight: 3 }
 });
 
-const ROUTE_CARDS = Object.freeze({ sega: segaCards, nintendo: nintendoCards, sony: sonyCards, xbox: xboxCards });
+const ROUTE_CARDS = Object.freeze({ sega: segaCards, nintendo: nintendoCards, sony: sonyCards, xbox: xboxCards, mycom: mycomCards });
 if (ACTIVE_ROUTES.some((route) => !Array.isArray(ROUTE_CARDS[route]) || ROUTE_CARDS[route].length !== ROUTE_CARD_COUNT)) {
   throw new Error("Each Gamer Word Quest route requires exactly 30 title cards.");
 }
@@ -93,13 +96,53 @@ function routeCardLabel(route = state.route) {
 }
 
 function cardKey(card) {
-  return normalizeEnglish(card?.english) || String(card?.questionId || card?.entryId || "");
+  return wordKey(learningWordsForCard(card)[0]) || normalizeEnglish(card?.english) || String(card?.questionId || card?.entryId || "");
+}
+
+function titleKey(card, route = state.route) {
+  return `${route || card?.mode || "game"}|${String(card?.entryId || card?.questionId || "")}`;
+}
+
+function learningWordsForCard(card) {
+  if (Array.isArray(card?.learningWords) && card.learningWords.length) return card.learningWords;
+  return card ? [{ display: card.english, lemma: card.english, senseId: "", meaningJa: card.meaningJa || card.answerJa || "" }] : [];
+}
+
+function wordKey(word) {
+  const sense = String(word?.senseId || "").trim().toLowerCase();
+  return sense || normalizeEnglish(word?.lemma || word?.display || word?.english);
+}
+
+function migratedWordKey(legacyKey, value = {}) {
+  const surface = normalizeEnglish(legacyKey);
+  const matches = [];
+  Object.entries(ROUTE_CARDS).forEach(([route, cards]) => {
+    cards.forEach((card) => {
+      learningWordsForCard(card).forEach((word) => {
+        if (normalizeEnglish(word.display) === surface) matches.push({ route, card, key: wordKey(word) });
+      });
+    });
+  });
+  if (!matches.length) return String(legacyKey);
+  const sourceTitle = String(value.sourceTitle || "");
+  const firstMode = String(value.firstMode || "");
+  const preferred = matches.filter(({ route, card }) => (sourceTitle && [card.sourceTitle, card.titleDisplay].includes(sourceTitle)) || (firstMode && route === firstMode));
+  const preferredKeys = [...new Set((preferred.length ? preferred : matches).map((match) => match.key))];
+  return preferredKeys.length === 1 ? preferredKeys[0] : String(legacyKey);
+}
+
+function isWordKnown(word) {
+  return state.progress.entries[wordKey(word)]?.status === "known";
+}
+
+function isTitleKnown(card, route = state.route) {
+  return state.progress.titles[titleKey(card, route)]?.status === "known";
 }
 
 function createEmptyProgress() {
   const modePlays = {};
   STORAGE_MODE_KEYS.forEach((key) => { modePlays[key] = 0; });
-  return { version: STORAGE_VERSION, entries: {}, modePlays };
+  return { version: STORAGE_VERSION, entries: {}, titles: {}, modePlays };
 }
 
 function sanitizeProgress(raw) {
@@ -109,12 +152,15 @@ function sanitizeProgress(raw) {
   if (raw.entries && typeof raw.entries === "object") {
     Object.entries(raw.entries).forEach(([key, value]) => {
       if (!key || !value || typeof value !== "object") return;
-      const safeKey = String(key);
+      const safeKey = migratedWordKey(String(key), value);
       progress.entries[safeKey] = {
         key: safeKey,
         english: String(value.english || ""),
         meaningJa: String(value.meaningJa || ""),
         sourceTitle: String(value.sourceTitle || ""),
+        sourceTitles: Array.isArray(value.sourceTitles) ? [...new Set(value.sourceTitles.map(String).filter(Boolean))] : String(value.sourceTitle || "") ? [String(value.sourceTitle)] : [],
+        lemma: String(value.lemma || value.english || safeKey),
+        senseId: String(value.senseId || ""),
         firstMode: String(value.firstMode || ""),
         firstQuestionId: String(value.firstQuestionId || ""),
         firstSeenAt: String(value.firstSeenAt || ""),
@@ -131,12 +177,15 @@ function sanitizeProgress(raw) {
     const knownWords = new Set(Array.isArray(raw.knownWords) ? raw.knownWords.map((item) => String(item)) : []);
     const unknownWords = new Set(Array.isArray(raw.unknownWords) ? raw.unknownWords.map((item) => String(item)) : []);
     seenWords.forEach((key) => {
-      const safeKey = String(key);
+      const safeKey = migratedWordKey(String(key));
       progress.entries[safeKey] = {
         key: safeKey,
         english: safeKey,
         meaningJa: "",
         sourceTitle: "",
+        sourceTitles: [],
+        lemma: safeKey,
+        senseId: "",
         firstMode: "",
         firstQuestionId: "",
         firstSeenAt: "",
@@ -146,6 +195,22 @@ function sanitizeProgress(raw) {
         correctCount: knownWords.has(safeKey) ? 1 : 0,
         incorrectCount: unknownWords.has(safeKey) ? 1 : 0,
         modes: {}
+      };
+    });
+  }
+  if (raw.titles && typeof raw.titles === "object") {
+    Object.entries(raw.titles).forEach(([key, value]) => {
+      if (!key || !value || typeof value !== "object") return;
+      progress.titles[key] = {
+        key,
+        route: String(value.route || key.split("|")[0] || ""),
+        entryId: String(value.entryId || key.split("|")[1] || ""),
+        titleDisplay: String(value.titleDisplay || ""),
+        status: value.status === "known" ? "known" : "seen",
+        seenCount: Number(value.seenCount) || 0,
+        firstSeenAt: String(value.firstSeenAt || ""),
+        lastSeenAt: String(value.lastSeenAt || ""),
+        masteredShown: Boolean(value.masteredShown)
       };
     });
   }
@@ -200,23 +265,11 @@ function unknownEntries() {
   return seenEntries().filter((entry) => entry.status === "unknown").sort((a, b) => (a.firstSeenAt || "").localeCompare(b.firstSeenAt || "") || a.english.localeCompare(b.english));
 }
 
-function statusEntryText(entry) {
-  if (entry.status === "known") return "もう知っている単語";
-  return "まだ知らない単語";
-}
-
-function modeNames(entry) {
-  const modes = Object.entries(entry.modes || {}).filter(([, active]) => active).map(([key]) => MODE_LABELS[key] || key);
-  return modes.length ? modes.join(" / ") : "";
-}
-
 function listItemPayload(entry) {
   return {
     english: entry.english || "",
     meaningJa: entry.meaningJa || "",
-    sourceTitle: entry.sourceTitle || "",
-    modeText: modeNames(entry),
-    statusText: statusEntryText(entry)
+    sourceTitles: Array.isArray(entry.sourceTitles) && entry.sourceTitles.length ? entry.sourceTitles : entry.sourceTitle ? [entry.sourceTitle] : []
   };
 }
 
@@ -232,22 +285,12 @@ function createWordRow(item) {
   main.append(word, meaning);
   const meta = document.createElement("div");
   meta.className = "word-row-meta";
-  const status = document.createElement("span");
-  status.className = "word-row-tag";
-  status.textContent = item.statusText || "";
-  meta.append(status);
-  if (item.modeText) {
-    const mode = document.createElement("span");
-    mode.className = "word-row-mode";
-    mode.textContent = item.modeText;
-    meta.append(mode);
-  }
-  if (item.sourceTitle) {
+  item.sourceTitles.forEach((sourceTitle) => {
     const title = document.createElement("span");
     title.className = "word-row-source";
-    title.textContent = item.sourceTitle;
+    title.textContent = sourceTitle;
     meta.append(title);
-  }
+  });
   row.append(main, meta);
   return row;
 }
@@ -331,16 +374,36 @@ function playToneSequence(notes, volume) {
 function playAnswerFeedback(answer) {
   if (answer === "known") {
     playToneSequence([
-      { frequency: 523.25, offset: 0, duration: 0.11 },
-      { frequency: 659.25, offset: 0.075, duration: 0.11 },
-      { frequency: 783.99, offset: 0.15, duration: 0.14 }
-    ], 0.055);
+      { frequency: 523.25, offset: 0, duration: 0.09 },
+      { frequency: 659.25, offset: 0.06, duration: 0.1 },
+      { frequency: 783.99, offset: 0.12, duration: 0.1 },
+      { frequency: 1046.5, offset: 0.2, duration: 0.16 }
+    ], 0.045);
   } else {
     playToneSequence([
       { frequency: 329.63, offset: 0, duration: 0.11 },
       { frequency: 261.63, offset: 0.09, duration: 0.13 }
     ], 0.018);
   }
+}
+
+function playMasteredFeedback() {
+  playToneSequence([
+    { frequency: 659.25, offset: 0, duration: 0.1 },
+    { frequency: 783.99, offset: 0.07, duration: 0.1 },
+    { frequency: 987.77, offset: 0.14, duration: 0.12 },
+    { frequency: 1318.51, offset: 0.24, duration: 0.2 }
+  ], 0.045);
+}
+
+function playClearFanfare() {
+  playToneSequence([
+    { frequency: 392, offset: 0, duration: 0.13 },
+    { frequency: 523.25, offset: 0.1, duration: 0.13 },
+    { frequency: 659.25, offset: 0.2, duration: 0.13 },
+    { frequency: 783.99, offset: 0.3, duration: 0.15 },
+    { frequency: 1046.5, offset: 0.43, duration: 0.32 }
+  ], 0.052);
 }
 
 function playDecisionFeedback() {
@@ -444,13 +507,12 @@ function beginRoutePlay(route, skipKnown) {
 }
 
 function filterCardsForRoute(route, skipKnown) {
-  const cards = baseCardsForRoute(route);
-  if (!skipKnown) return shuffled(cards);
+  const cards = baseCardsForRoute(route).filter((card) => !isTitleKnown(card, route));
+  if (!skipKnown) return shuffled(cards).slice(0, ROUTE_CARD_COUNT);
   const learning = [];
   const unseen = [];
   cards.forEach((card) => {
-    const entry = state.progress.entries[cardKey(card)];
-    if (entry?.status === "known") return;
+    const entry = state.progress.titles[titleKey(card, route)];
     if (entry?.seenCount > 0) learning.push(card);
     else unseen.push(card);
   });
@@ -493,15 +555,41 @@ function renderProgress() {
   });
 }
 
-function recordSeen(card) {
-  const key = cardKey(card);
+function recordTitleSeen(card) {
+  const key = titleKey(card);
+  const now = nowIso();
+  const existing = state.progress.titles[key] || {
+    key,
+    route: state.route || "",
+    entryId: card.entryId || "",
+    titleDisplay: card.titleDisplay || "",
+    status: "seen",
+    seenCount: 0,
+    firstSeenAt: now,
+    lastSeenAt: now,
+    masteredShown: false
+  };
+  existing.titleDisplay ||= card.titleDisplay || "";
+  existing.firstSeenAt ||= now;
+  existing.lastSeenAt = now;
+  existing.seenCount = Number(existing.seenCount) + 1;
+  state.progress.titles[key] = existing;
+  return existing;
+}
+
+function recordWordSeen(word, card) {
+  const key = wordKey(word);
   if (!key) return;
   const now = nowIso();
+  const sourceTitle = card.sourceTitle || card.titleDisplay || "";
   const existing = state.progress.entries[key] || {
     key,
-    english: card.english.toLowerCase(),
-    meaningJa: card.meaningJa || card.answerJa || card.context || "",
-    sourceTitle: card.sourceTitle || card.titleDisplay || "",
+    english: String(word.display || word.lemma || "").toLowerCase(),
+    lemma: String(word.lemma || word.display || "").toLowerCase(),
+    senseId: String(word.senseId || ""),
+    meaningJa: word.meaningJa || "",
+    sourceTitle,
+    sourceTitles: sourceTitle ? [sourceTitle] : [],
     firstMode: state.route || "",
     firstQuestionId: card.questionId || "",
     firstSeenAt: now,
@@ -512,9 +600,13 @@ function recordSeen(card) {
     incorrectCount: 0,
     modes: {}
   };
-  existing.english = card.english.toLowerCase();
-  existing.meaningJa ||= card.meaningJa || card.answerJa || card.context || "";
-  existing.sourceTitle ||= card.sourceTitle || card.titleDisplay || "";
+  existing.english ||= String(word.display || word.lemma || "").toLowerCase();
+  existing.lemma ||= String(word.lemma || word.display || "").toLowerCase();
+  existing.senseId ||= String(word.senseId || "");
+  existing.meaningJa ||= word.meaningJa || "";
+  existing.sourceTitle ||= sourceTitle;
+  existing.sourceTitles = Array.isArray(existing.sourceTitles) ? existing.sourceTitles : existing.sourceTitle ? [existing.sourceTitle] : [];
+  if (sourceTitle && !existing.sourceTitles.includes(sourceTitle)) existing.sourceTitles.push(sourceTitle);
   existing.firstMode ||= state.route || "";
   existing.firstQuestionId ||= card.questionId || "";
   existing.firstSeenAt ||= now;
@@ -524,23 +616,94 @@ function recordSeen(card) {
   if (state.route) existing.modes[state.route] = true;
   if (existing.status !== "known") existing.status = "unknown";
   state.progress.entries[key] = existing;
+  return existing;
+}
+
+function recordSeen(card) {
+  recordTitleSeen(card);
+  learningWordsForCard(card).forEach((word) => recordWordSeen(word, card));
+}
+
+function learnWord(word, card) {
+  const entry = state.progress.entries[wordKey(word)] || recordWordSeen(word, card);
+  if (!entry) return;
+  const key = wordKey(word);
+  if (entry.status !== "known") state.newlyKnownKeys.add(key);
+  entry.status = "known";
+  entry.correctCount = Number(entry.correctCount) + 1;
+  entry.lastSeenAt = nowIso();
+}
+
+function markTitleKnown(card, masteredShown = false) {
+  const title = state.progress.titles[titleKey(card)] || recordTitleSeen(card);
+  title.status = "known";
+  if (masteredShown) title.masteredShown = true;
+  title.lastSeenAt = nowIso();
 }
 
 function recordAnswer(card, answer) {
-  const key = cardKey(card);
-  if (!key) return;
-  const existing = state.progress.entries[key] || null;
-  if (!existing) return;
-  existing.correctCount = Number(existing.correctCount) + (answer === "known" ? 1 : 0);
-  existing.incorrectCount = Number(existing.incorrectCount) + (answer === "unknown" ? 1 : 0);
-  const wasKnown = existing.status === "known";
-  if (answer === "known") {
-    existing.status = "known";
-    if (!wasKnown) state.newlyKnownKeys.add(key);
-  } else if (existing.status !== "known") {
-    existing.status = "unknown";
+  learningWordsForCard(card).forEach((word) => {
+    const entry = state.progress.entries[wordKey(word)] || recordWordSeen(word, card);
+    if (answer === "known") learnWord(word, card);
+    else if (entry?.status !== "known") {
+      entry.status = "unknown";
+      entry.incorrectCount = Number(entry.incorrectCount) + 1;
+      entry.lastSeenAt = nowIso();
+    }
+  });
+  if (answer === "known") markTitleKnown(card);
+}
+
+function renderEnglishWords(card) {
+  const container = $("card-english");
+  container.replaceChildren();
+  learningWordsForCard(card).forEach((word) => {
+    const token = document.createElement("span");
+    token.className = `card-word${isWordKnown(word) ? " is-known" : ""}`;
+    const english = document.createElement("strong");
+    english.textContent = word.display;
+    token.append(english);
+    if (isWordKnown(word)) {
+      const meaning = document.createElement("small");
+      meaning.textContent = word.meaningJa;
+      token.append(meaning);
+    }
+    container.append(token);
+  });
+}
+
+function renderAnswerWords(words, mastered = false) {
+  const answer = $("card-answer");
+  answer.replaceChildren();
+  if (mastered) {
+    const master = document.createElement("strong");
+    master.className = "mastered-message";
+    master.textContent = "全単語マスター済み！";
+    answer.append(master);
+  } else {
+    words.forEach((word) => {
+      const row = document.createElement("span");
+      row.className = "answer-word";
+      row.innerHTML = "<strong></strong><small></small>";
+      row.querySelector("strong").textContent = word.display;
+      row.querySelector("small").textContent = word.meaningJa;
+      answer.append(row);
+    });
   }
-  existing.lastSeenAt = nowIso();
+  answer.hidden = false;
+}
+
+function advanceAfterReveal() {
+  state.answerTimer = window.setTimeout(() => {
+    state.answerTimer = null;
+    if (state.cardIndex < routeTotal() - 1) {
+      state.cardIndex += 1;
+      renderCard();
+    } else {
+      state.isAnimating = false;
+      renderResult();
+    }
+  }, ANSWER_REVEAL_MS);
 }
 
 function renderCard() {
@@ -550,15 +713,17 @@ function renderCard() {
     return;
   }
   recordSeen(card);
+  saveProgress();
   clearSwipeVisuals();
   $("screen-scan").classList.remove("is-revealing");
+  $("screen-scan").classList.remove("is-mastered");
   $("scan-card").classList.remove("is-answer-known", "is-answer-unknown");
   document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = false; });
   $("scan-current").textContent = String(state.cardIndex + 1).padStart(2, "0");
   $("scan-total").textContent = String(routeTotal());
   $("scan-title").textContent = `ゲーム英語${routeTotal()}問`;
   $("card-katakana").textContent = card.titleDisplay || card.katakana;
-  $("card-english").textContent = card.english.toLowerCase();
+  renderEnglishWords(card);
   const answer = $("card-answer");
   answer.hidden = true;
   answer.textContent = "";
@@ -584,7 +749,19 @@ function renderCard() {
   renderTitleStats();
   state.isAnimating = false;
   state.drag = null;
-  speakEnglish(card.english);
+  const allWordsKnown = learningWordsForCard(card).every(isWordKnown);
+  speakEnglish(learningWordsForCard(card).map((word) => word.display).join(" "));
+  if (allWordsKnown && !isTitleKnown(card)) {
+    state.isAnimating = true;
+    state.answers[state.cardIndex] = "mastered";
+    markTitleKnown(card, true);
+    saveProgress();
+    renderAnswerWords([], true);
+    $("screen-scan").classList.add("is-revealing", "is-mastered");
+    document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = true; });
+    playMasteredFeedback();
+    advanceAfterReveal();
+  }
 }
 
 function renderSessionWordLists(scores) {
@@ -599,13 +776,13 @@ function answerCard(answer) {
   state.isAnimating = true;
   state.answers[state.cardIndex] = answer;
   const cardData = activeCards()[state.cardIndex];
+  const unlearnedWords = learningWordsForCard(cardData).filter((word) => !isWordKnown(word));
   const card = $("scan-card");
   const isKnown = answer === "known";
   clearSwipeVisuals();
   card.classList.add(isKnown ? "is-answer-known" : "is-answer-unknown");
   $(isKnown ? "swipe-stamp-known" : "swipe-stamp-unknown").style.opacity = "1";
-  $("card-answer").textContent = cardData.answerJa;
-  $("card-answer").hidden = false;
+  renderAnswerWords(unlearnedWords);
   $("screen-scan").classList.add("is-revealing");
   document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = true; });
   cancelSpeech();
@@ -613,16 +790,7 @@ function answerCard(answer) {
   saveProgress();
   renderTitleStats();
   playAnswerFeedback(answer);
-  state.answerTimer = window.setTimeout(() => {
-    state.answerTimer = null;
-    if (state.cardIndex < routeTotal() - 1) {
-      state.cardIndex += 1;
-      renderCard();
-    } else {
-      state.isAnimating = false;
-      renderResult();
-    }
-  }, ANSWER_REVEAL_MS);
+  advanceAfterReveal();
 }
 
 function getScores() {
@@ -633,13 +801,13 @@ function getScores() {
   cards.forEach((card, index) => {
     const weight = BAND_META[card.difficulty]?.weight || 1;
     weightedTotal += weight;
-    if (state.answers[index] === "known") {
+    if (["known", "mastered"].includes(state.answers[index])) {
       known += 1;
       weightedKnown += weight;
     }
   });
   return {
-    known: cards.filter((_, index) => state.answers[index] === "known"),
+    known: cards.filter((_, index) => ["known", "mastered"].includes(state.answers[index])),
     unknown: cards.filter((_, index) => state.answers[index] === "unknown"),
     score: weightedTotal === 0 ? 0 : Math.round((weightedKnown / weightedTotal) * 100)
   };
@@ -664,20 +832,29 @@ function celebrateResult(screenId, score) {
   screen.classList.remove("is-celebrating");
   void screen.offsetWidth;
   screen.classList.add("is-celebrating");
+  if (screenId === "screen-result") playClearFanfare();
 }
 
 function buildSessionEntries(scores) {
   const cards = activeCards();
-  const entries = cards.map((card, index) => ({
-    key: cardKey(card),
-    english: card.english.toLowerCase(),
-    meaningJa: card.meaningJa || card.answerJa || card.context || "",
-    sourceTitle: card.sourceTitle || card.titleDisplay || "",
-    modeText: routeLabel(state.route),
-    statusText: state.answers[index] === "known" ? "もう知っている単語" : "まだ知らない単語",
-    status: state.answers[index] === "known" ? "known" : "unknown",
-    order: index
-  }));
+  const entries = [];
+  const seen = new Set();
+  cards.forEach((card, cardIndex) => {
+    learningWordsForCard(card).forEach((word, wordIndex) => {
+      const key = wordKey(word);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      const progress = state.progress.entries[key];
+      entries.push({
+        key,
+        english: word.display.toLowerCase(),
+        meaningJa: word.meaningJa,
+        sourceTitles: progress?.sourceTitles || [card.sourceTitle || card.titleDisplay || ""],
+        status: progress?.status === "known" ? "known" : "unknown",
+        order: cardIndex * 10 + wordIndex
+      });
+    });
+  });
   const known = entries.filter((entry) => entry.status === "known").sort((a, b) => a.order - b.order);
   const unknown = entries.filter((entry) => entry.status === "unknown").sort((a, b) => a.order - b.order);
   return { known, unknown };
@@ -1027,7 +1204,7 @@ document.addEventListener("click", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (!$("screen-home").hidden) {
-    const route = ({ "1": "sega", "2": "nintendo", "3": "sony", "4": "xbox" })[event.key];
+    const route = ({ "1": "sega", "2": "nintendo", "3": "sony", "4": "xbox", "5": "mycom" })[event.key];
     if (route) chooseRoute(route);
     return;
   }
