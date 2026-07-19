@@ -1196,3 +1196,215 @@ h1 {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
+
+/* 16-bit demo skin: hard edges, tile patterns, and original parody mascots. */
+:root {
+  --ink: #18152d;
+  --muted: #5f5873;
+  --cream: #fff4cf;
+  --paper: #fffdf2;
+  --line: #332a53;
+  --shadow: 6px 6px 0 rgba(31, 24, 58, .28);
+  font-family: "MS Gothic", "Osaka-Mono", ui-monospace, monospace;
+}
+
+html { background: #21194a; }
+
+body {
+  background-color: #322765;
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,.045) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.045) 75%),
+    linear-gradient(45deg, rgba(255,255,255,.045) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.045) 75%);
+  background-position: 0 0, 8px 8px;
+  background-size: 16px 16px;
+}
+
+body[data-route] { background-size: 16px 16px; }
+
+.topbar,
+.footer-note {
+  border-color: #211936;
+  background: #fff0bd;
+  box-shadow: inset 0 -3px 0 #d7a84b;
+}
+
+.app-shell {
+  border-inline: 4px solid #211936;
+  background-color: var(--cream);
+  background-image: linear-gradient(rgba(71,55,111,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(71,55,111,.045) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+.screen { animation: screen-in .18s steps(4, end) both; }
+
+.brand,
+.sound-toggle,
+.history-button,
+.secondary-button,
+.primary-button,
+.answer-button,
+.memory-reset {
+  border-radius: 3px;
+  border: 3px solid #211936;
+  box-shadow: 4px 4px 0 #211936;
+  text-transform: none;
+}
+
+.brand { background: #6a43bd; }
+.sound-toggle { background: #fffdf2; }
+.test-chip { padding: 4px 6px; color: #fff; background: #d43f55; border: 2px solid #211936; }
+
+.route-card {
+  position: relative;
+  border: 4px solid #211936;
+  border-radius: 4px;
+  background: #fef7d5;
+  box-shadow: 8px 8px 0 #d19a3d;
+}
+
+.route-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(47,34,76,.035) 3px 4px);
+}
+
+.home-catch { color: #d33c53; text-shadow: 2px 2px 0 #ffd24e; }
+
+#home-title {
+  z-index: 1;
+  border: 4px solid #171229;
+  border-radius: 0;
+  background: linear-gradient(#7856c8 0 48%, #57339d 49% 100%);
+  box-shadow: 5px 5px 0 #ffbd3c, 9px 9px 0 #171229;
+  font-family: "MS Gothic", ui-monospace, monospace;
+  text-shadow: 3px 3px 0 #241647;
+}
+
+.route-actions { gap: 12px; }
+
+.route-button {
+  position: relative;
+  overflow: hidden;
+  border: 4px solid #211936;
+  border-radius: 4px;
+  box-shadow: 5px 5px 0 #211936;
+  transition: transform .08s steps(2, end), box-shadow .08s steps(2, end);
+}
+
+.route-button::after {
+  content: "▶";
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  color: rgba(255,255,255,.72);
+  font-size: 12px;
+}
+
+.route-button:active { transform: translate(4px, 4px); box-shadow: 1px 1px 0 #211936; }
+.route-sega { background: repeating-linear-gradient(135deg, #197fd4 0 10px, #3296e4 10px 20px); }
+.route-nintendo { background: repeating-linear-gradient(135deg, #c83c42 0 10px, #df4c4d 10px 20px); }
+.route-sony { color: #26375f; background: repeating-linear-gradient(135deg, #dce7ff 0 10px, #f7f9ff 10px 20px); }
+.route-xbox { background: repeating-linear-gradient(135deg, #26733e 0 10px, #358c49 10px 20px); }
+.route-mycom { background: repeating-linear-gradient(135deg, #e7a83d 0 10px, #f6c55e 10px 20px); }
+
+.mascot {
+  width: 62px;
+  height: 62px;
+  border: 4px solid #211936;
+  border-radius: 2px;
+  image-rendering: pixelated;
+  box-shadow: 4px 4px 0 rgba(25,19,47,.55);
+}
+
+.mascot::before,
+.mascot::after { border-radius: 0; }
+
+.mascot[data-mode="sega"] {
+  border: 0;
+  background: #064f9f;
+  clip-path: polygon(0 14%, 23% 19%, 31% 0, 47% 20%, 67% 3%, 70% 24%, 100% 18%, 82% 42%, 100% 56%, 75% 65%, 83% 92%, 56% 79%, 39% 100%, 29% 75%, 0 85%, 17% 56%);
+  filter: drop-shadow(4px 4px 0 #153264);
+  box-shadow: none;
+}
+.mascot[data-mode="sega"]::before { left: 28px; top: 31px; width: 25px; height: 18px; background: #efbb76; box-shadow: -3px -15px 0 -7px #fff, 7px -15px 0 -7px #fff; }
+.mascot[data-mode="sega"]::after { content: ">"; left: 35px; bottom: 13px; width: auto; height: auto; border: 0; color: #172241; font-size: 17px; font-weight: 900; }
+
+.mascot[data-mode="nintendo"] { background: linear-gradient(#cf313a 0 27%, #f0b277 28% 100%); }
+.mascot[data-mode="nintendo"]::before { left: 15px; top: 28px; width: 7px; height: 8px; background: #24203c; box-shadow: 25px 0 #24203c, 13px 8px 0 2px #d78350; }
+.mascot[data-mode="nintendo"]::after { left: 13px; bottom: 8px; width: 34px; height: 8px; border: 0; background: #42251f; box-shadow: 8px 5px 0 -2px #42251f, 18px 5px 0 -2px #42251f; }
+
+.mascot[data-mode="sony"] {
+  border-color: #35416a;
+  border-radius: 0;
+  background: #fff;
+  clip-path: polygon(0 24%, 12% 24%, 10% 0, 33% 17%, 67% 17%, 90% 0, 88% 24%, 100% 24%, 100% 100%, 0 100%);
+}
+.mascot[data-mode="sony"]::before { left: 15px; top: 29px; width: 7px; height: 9px; background: #25335c; box-shadow: 25px 0 #25335c; }
+.mascot[data-mode="sony"]::after { content: "3"; left: 24px; bottom: 7px; width: auto; height: auto; border: 0; color: #d87b79; font-size: 17px; font-weight: 900; transform: rotate(90deg); }
+
+.mascot[data-mode="xbox"] { border-color: #152b22; background: #397b43; }
+.mascot[data-mode="xbox"]::before { left: 8px; top: 15px; width: 38px; height: 17px; border: 4px solid #18372b; background: #8de0d1; box-shadow: inset 0 -5px 0 #3e8c85; }
+.mascot[data-mode="xbox"]::after { left: 14px; bottom: 5px; width: 26px; height: 15px; border: 4px solid #b4c36c; border-top: 0; background: #294f35; }
+
+.mascot[data-mode="mycom"] { width: 82px; background: #17152d; border-color: #f0ae37; box-shadow: 4px 4px 0 #5b3c24; }
+.mascot[data-mode="mycom"]::before { content: "マイコン"; inset: 8px 3px auto; width: auto; height: auto; border: 0; background: none; box-shadow: none; color: #ffcf4a; font-size: 15px; line-height: 1; font-weight: 900; white-space: nowrap; }
+.mascot[data-mode="mycom"]::after { content: "READY_"; left: 8px; bottom: 6px; width: auto; height: auto; border: 0; background: none; color: #75e47d; font-size: 12px; }
+
+.result-mascot { image-rendering: pixelated; filter: none; }
+
+.memory-reset {
+  align-self: flex-end;
+  min-height: 32px;
+  padding: 3px 8px;
+  color: #7d3041;
+  background: #ffe8ce;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.quiz-progress > strong { font-family: "Courier New", monospace; text-shadow: 2px 2px 0 #ead17c; }
+.progress-pips i { border-radius: 0; border: 2px solid #332a53; background: #d7cba8; }
+
+.scan-card {
+  border: 4px solid #211936;
+  border-radius: 4px;
+  background-color: #fffdf2;
+  background-image: linear-gradient(rgba(78,61,111,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(78,61,111,.04) 1px, transparent 1px);
+  background-size: 8px 8px;
+  box-shadow: 8px 8px 0 #d3b85d;
+}
+
+.card-katakana { text-shadow: 2px 2px 0 #e7d8a9; }
+.card-word { font-family: "Courier New", "MS Gothic", monospace; }
+.card-word.is-known { border: 2px solid #2d765b; border-radius: 2px; background: #d8f3c8; box-shadow: 2px 2px 0 #2d765b; }
+.card-word.is-proper { color: #665223; border-color: #9a762b; background: #fff0a5; box-shadow: 2px 2px 0 #9a762b; }
+.card-word.is-proper small { color: #725619; }
+.card-answer { border-radius: 2px; border: 3px solid #6c5425; background: #fff0ae; box-shadow: 3px 3px 0 #6c5425; }
+.answer-word { border-radius: 0; }
+.mastered-message { text-shadow: 2px 2px 0 #ffe06b; }
+.screen.is-auto-review .binary-actions { visibility: hidden; pointer-events: none; }
+
+.answer-button { border-radius: 3px; box-shadow: 4px 4px 0 #211936; }
+.answer-button:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 #211936; }
+
+.result-stage,
+.history-stage,
+.replay-stage,
+.word-row,
+.result-summary div {
+  border-radius: 3px;
+}
+
+.result-stage { border-color: #211936; background: #fff4bf; box-shadow: 8px 8px 0 #c88934; }
+.result-burst i { border-radius: 0; }
+.word-row { border: 3px solid #332a53; box-shadow: 3px 3px 0 #c9b05b; }
+
+@media (max-width: 370px) {
+  .route-button { min-height: 86px; }
+  .mascot { width: 54px; height: 54px; }
+  .mascot[data-mode="mycom"] { width: 74px; }
+  .memory-reset { min-height: 28px; }
+}

@@ -108,6 +108,21 @@ function learningWordsForCard(card) {
   return card ? [{ display: card.english, lemma: card.english, senseId: "", meaningJa: card.meaningJa || card.answerJa || "" }] : [];
 }
 
+function nonlearningTokensForCard(card) {
+  return Array.isArray(card?.nonlearningTokens) ? card.nonlearningTokens : [];
+}
+
+function displayWordsForCard(card) {
+  return [
+    ...learningWordsForCard(card).map((word) => ({ ...word, isLearningTarget: true })),
+    ...nonlearningTokensForCard(card).map((word) => ({ ...word, meaningJa: word.labelJa, isLearningTarget: false }))
+  ].sort((a, b) => Number(a.order) - Number(b.order));
+}
+
+function allLearningWordsKnown(card) {
+  return learningWordsForCard(card).every(isWordKnown);
+}
+
 function wordKey(word) {
   const sense = String(word?.senseId || "").trim().toLowerCase();
   return sense || normalizeEnglish(word?.lemma || word?.display || word?.english);
@@ -247,6 +262,21 @@ function resetVocabularyProgress() {
   renderHistoryScreen();
 }
 
+function resetAllMemoryFromUi() {
+  if (!window.confirm("覚えた単語とプレイ記録をすべて消します。よろしいですか？")) return;
+  resetState();
+  resetVocabularyProgress();
+  state.route = null;
+  state.pendingRoute = null;
+  setRouteVisuals();
+  showScreen("screen-home");
+  playToneSequence([
+    { frequency: 392, offset: 0, duration: 0.07 },
+    { frequency: 293.66, offset: 0.07, duration: 0.07 },
+    { frequency: 196, offset: 0.14, duration: 0.12 }
+  ], 0.012, "triangle");
+}
+
 window.__resetVocabularyProgress = resetVocabularyProgress;
 
 function vocabularyCount() {
@@ -348,17 +378,17 @@ function getAnswerAudioContext() {
   return answerAudioContext;
 }
 
-function playToneSequence(notes, volume) {
+function playToneSequence(notes, volume, defaultType = "square") {
   if (!state.soundEnabled) return;
   const context = getAnswerAudioContext();
   if (!context) return;
   try {
     if (context.state === "suspended") context.resume?.();
     const startAt = context.currentTime + 0.012;
-    notes.forEach(({ frequency, offset, duration }) => {
+    notes.forEach(({ frequency, offset, duration, type }) => {
       const oscillator = context.createOscillator();
       const gain = context.createGain();
-      oscillator.type = "sine";
+      oscillator.type = type || defaultType;
       oscillator.frequency.setValueAtTime(frequency, startAt + offset);
       gain.gain.setValueAtTime(0.0001, startAt + offset);
       gain.gain.exponentialRampToValueAtTime(volume, startAt + offset + 0.018);
@@ -374,36 +404,44 @@ function playToneSequence(notes, volume) {
 function playAnswerFeedback(answer) {
   if (answer === "known") {
     playToneSequence([
-      { frequency: 523.25, offset: 0, duration: 0.09 },
-      { frequency: 659.25, offset: 0.06, duration: 0.1 },
-      { frequency: 783.99, offset: 0.12, duration: 0.1 },
-      { frequency: 1046.5, offset: 0.2, duration: 0.16 }
-    ], 0.045);
+      { frequency: 523.25, offset: 0, duration: 0.07 },
+      { frequency: 659.25, offset: 0.055, duration: 0.07 },
+      { frequency: 783.99, offset: 0.11, duration: 0.08 },
+      { frequency: 1046.5, offset: 0.17, duration: 0.1 },
+      { frequency: 1318.51, offset: 0.25, duration: 0.15 }
+    ], 0.026);
   } else {
     playToneSequence([
-      { frequency: 329.63, offset: 0, duration: 0.11 },
-      { frequency: 261.63, offset: 0.09, duration: 0.13 }
-    ], 0.018);
+      { frequency: 246.94, offset: 0, duration: 0.08 },
+      { frequency: 196, offset: 0.075, duration: 0.12 }
+    ], 0.012, "triangle");
   }
 }
 
 function playMasteredFeedback() {
   playToneSequence([
-    { frequency: 659.25, offset: 0, duration: 0.1 },
-    { frequency: 783.99, offset: 0.07, duration: 0.1 },
-    { frequency: 987.77, offset: 0.14, duration: 0.12 },
-    { frequency: 1318.51, offset: 0.24, duration: 0.2 }
-  ], 0.045);
+    { frequency: 523.25, offset: 0, duration: 0.08 },
+    { frequency: 659.25, offset: 0.06, duration: 0.08 },
+    { frequency: 783.99, offset: 0.12, duration: 0.08 },
+    { frequency: 1046.5, offset: 0.18, duration: 0.1 },
+    { frequency: 1318.51, offset: 0.26, duration: 0.1 },
+    { frequency: 1567.98, offset: 0.34, duration: 0.2 }
+  ], 0.025);
 }
 
 function playClearFanfare() {
   playToneSequence([
-    { frequency: 392, offset: 0, duration: 0.13 },
-    { frequency: 523.25, offset: 0.1, duration: 0.13 },
-    { frequency: 659.25, offset: 0.2, duration: 0.13 },
-    { frequency: 783.99, offset: 0.3, duration: 0.15 },
-    { frequency: 1046.5, offset: 0.43, duration: 0.32 }
-  ], 0.052);
+    { frequency: 261.63, offset: 0, duration: 0.1 },
+    { frequency: 329.63, offset: 0.08, duration: 0.1 },
+    { frequency: 392, offset: 0.16, duration: 0.1 },
+    { frequency: 523.25, offset: 0.24, duration: 0.12 },
+    { frequency: 659.25, offset: 0.34, duration: 0.12 },
+    { frequency: 783.99, offset: 0.44, duration: 0.12 },
+    { frequency: 1046.5, offset: 0.54, duration: 0.16 },
+    { frequency: 783.99, offset: 0.68, duration: 0.1 },
+    { frequency: 987.77, offset: 0.76, duration: 0.1 },
+    { frequency: 1318.51, offset: 0.84, duration: 0.3 }
+  ], 0.028);
 }
 
 function playDecisionFeedback() {
@@ -425,7 +463,7 @@ function toggleSound() {
   state.soundEnabled = !state.soundEnabled;
   updateSoundToggle();
   cancelSpeech();
-  if (state.soundEnabled && !$("screen-scan").hidden && !state.isAnimating && activeCards()[state.cardIndex]) speakEnglish(activeCards()[state.cardIndex].english);
+  if (state.soundEnabled && !$("screen-scan").hidden && !state.isAnimating && activeCards()[state.cardIndex]) speakEnglish(displayWordsForCard(activeCards()[state.cardIndex]).map((word) => word.display).join(" "));
 }
 
 function showScreen(id) {
@@ -476,6 +514,7 @@ function renderHistoryScreen() {
 
 function chooseRoute(route) {
   if (!ACTIVE_ROUTES.includes(route)) return;
+  playDecisionFeedback();
   state.route = route;
   setRouteVisuals();
   if (state.progress.modePlays[route] > 0) {
@@ -507,11 +546,11 @@ function beginRoutePlay(route, skipKnown) {
 }
 
 function filterCardsForRoute(route, skipKnown) {
-  const cards = baseCardsForRoute(route).filter((card) => !isTitleKnown(card, route));
+  const cards = baseCardsForRoute(route);
   if (!skipKnown) return shuffled(cards).slice(0, ROUTE_CARD_COUNT);
   const learning = [];
   const unseen = [];
-  cards.forEach((card) => {
+  cards.filter((card) => !allLearningWordsKnown(card)).forEach((card) => {
     const entry = state.progress.titles[titleKey(card, route)];
     if (entry?.seenCount > 0) learning.push(card);
     else unseen.push(card);
@@ -657,13 +696,14 @@ function recordAnswer(card, answer) {
 function renderEnglishWords(card) {
   const container = $("card-english");
   container.replaceChildren();
-  learningWordsForCard(card).forEach((word) => {
+  displayWordsForCard(card).forEach((word) => {
     const token = document.createElement("span");
-    token.className = `card-word${isWordKnown(word) ? " is-known" : ""}`;
+    const known = !word.isLearningTarget || isWordKnown(word);
+    token.className = `card-word${known ? " is-known" : ""}${word.isLearningTarget ? "" : " is-proper"}`;
     const english = document.createElement("strong");
     english.textContent = word.display;
     token.append(english);
-    if (isWordKnown(word)) {
+    if (known) {
       const meaning = document.createElement("small");
       meaning.textContent = word.meaningJa;
       token.append(meaning);
@@ -672,13 +712,13 @@ function renderEnglishWords(card) {
   });
 }
 
-function renderAnswerWords(words, mastered = false) {
+function renderAnswerWords(words, statusMessage = "") {
   const answer = $("card-answer");
   answer.replaceChildren();
-  if (mastered) {
+  if (statusMessage) {
     const master = document.createElement("strong");
     master.className = "mastered-message";
-    master.textContent = "全単語マスター済み！";
+    master.textContent = statusMessage;
     answer.append(master);
   } else {
     words.forEach((word) => {
@@ -717,6 +757,7 @@ function renderCard() {
   clearSwipeVisuals();
   $("screen-scan").classList.remove("is-revealing");
   $("screen-scan").classList.remove("is-mastered");
+  $("screen-scan").classList.remove("is-auto-review");
   $("scan-card").classList.remove("is-answer-known", "is-answer-unknown");
   document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = false; });
   $("scan-current").textContent = String(state.cardIndex + 1).padStart(2, "0");
@@ -749,15 +790,16 @@ function renderCard() {
   renderTitleStats();
   state.isAnimating = false;
   state.drag = null;
-  const allWordsKnown = learningWordsForCard(card).every(isWordKnown);
-  speakEnglish(learningWordsForCard(card).map((word) => word.display).join(" "));
-  if (allWordsKnown && !isTitleKnown(card)) {
+  const allWordsKnown = allLearningWordsKnown(card);
+  const titleWasKnown = isTitleKnown(card);
+  speakEnglish(displayWordsForCard(card).map((word) => word.display).join(" "));
+  if (allWordsKnown) {
     state.isAnimating = true;
-    state.answers[state.cardIndex] = "mastered";
-    markTitleKnown(card, true);
+    state.answers[state.cardIndex] = titleWasKnown ? "reviewed" : "mastered";
+    if (!titleWasKnown) markTitleKnown(card, true);
     saveProgress();
-    renderAnswerWords([], true);
-    $("screen-scan").classList.add("is-revealing", "is-mastered");
+    renderAnswerWords([], titleWasKnown ? "もう覚え済み" : "全単語マスター済み！");
+    $("screen-scan").classList.add("is-revealing", "is-mastered", "is-auto-review");
     document.querySelectorAll("[data-answer]").forEach((button) => { button.disabled = true; });
     playMasteredFeedback();
     advanceAfterReveal();
@@ -801,13 +843,13 @@ function getScores() {
   cards.forEach((card, index) => {
     const weight = BAND_META[card.difficulty]?.weight || 1;
     weightedTotal += weight;
-    if (["known", "mastered"].includes(state.answers[index])) {
+    if (["known", "mastered", "reviewed"].includes(state.answers[index])) {
       known += 1;
       weightedKnown += weight;
     }
   });
   return {
-    known: cards.filter((_, index) => ["known", "mastered"].includes(state.answers[index])),
+    known: cards.filter((_, index) => ["known", "mastered", "reviewed"].includes(state.answers[index])),
     unknown: cards.filter((_, index) => state.answers[index] === "unknown"),
     score: weightedTotal === 0 ? 0 : Math.round((weightedKnown / weightedTotal) * 100)
   };
@@ -1185,6 +1227,7 @@ document.addEventListener("click", (event) => {
     "toggle-sound": toggleSound,
     "start-networks": startNetworks,
     "open-history": openHistory,
+    "reset-memory": resetAllMemoryFromUi,
     "replay-skip-yes": () => replayChoice(true),
     "replay-skip-no": () => replayChoice(false),
     restart: () => {
